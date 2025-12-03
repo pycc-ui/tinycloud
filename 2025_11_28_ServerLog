@@ -1,0 +1,534 @@
+2025-11-28 20:50:32.935357 [info]:timer tick
+2025-11-28 20:50:36.180773 [info]:deal with the client(127.0.0.1)
+2025-11-28 20:50:36.180830 [info]:adjust timer once
+2025-11-28 20:50:36.181011 [info]:GET /login HTTP/1.1
+2025-11-28 20:50:36.181029 [info]:Host: localhost
+2025-11-28 20:50:36.181033 [info]:Content-Length: 29
+2025-11-28 20:50:36.181036 [info]:Connection: close
+2025-11-28 20:50:36.181039 [info]:
+2025-11-28 20:50:36.181042 [info]:{"user":"111","passwd":"111"}
+
+2025-11-28 20:50:36.181112 [info]:request:HTTP/1.1 200 OK
+
+2025-11-28 20:50:36.181116 [info]:request:HTTP/1.1 200 OK
+Content-Length:20
+
+2025-11-28 20:50:36.181119 [info]:request:HTTP/1.1 200 OK
+Content-Length:20
+Connection:close
+
+2025-11-28 20:50:36.181122 [info]:request:HTTP/1.1 200 OK
+Content-Length:20
+Connection:close
+
+
+2025-11-28 20:50:36.181227 [info]:close fd 16
+2025-11-28 20:50:37.935777 [info]:timer tick
+2025-11-28 20:50:42.936053 [info]:timer tick
+2025-11-28 20:50:47.936290 [info]:timer tick
+2025-11-28 20:50:52.936555 [info]:timer tick
+2025-11-28 20:50:57.936981 [info]:timer tick
+2025-11-28 20:51:02.937193 [info]:timer tick
+2025-11-28 20:51:07.937322 [info]:timer tick
+2025-11-28 20:51:12.937447 [info]:timer tick
+2025-11-28 20:51:17.937648 [info]:timer tick
+2025-11-28 20:51:22.937886 [info]:timer tick
+2025-11-28 20:51:27.938111 [info]:timer tick
+2025-11-28 20:51:32.938414 [info]:timer tick
+2025-11-28 20:51:37.938799 [info]:timer tick
+2025-11-28 20:51:42.939000 [info]:timer tick
+2025-11-28 20:51:47.939299 [info]:timer tick
+2025-11-28 20:51:52.939887 [info]:timer tick
+2025-11-28 20:51:57.940383 [info]:timer tick
+2025-11-28 20:52:02.940621 [info]:timer tick
+2025-11-28 20:52:07.941039 [info]:timer tick
+2025-11-28 20:52:12.941419 [info]:timer tick
+2025-11-28 20:52:17.942034 [info]:timer tick
+2025-11-28 20:52:22.942434 [info]:timer tick
+2025-11-28 20:52:27.942619 [info]:timer tick
+2025-11-28 20:52:32.943385 [info]:timer tick
+2025-11-28 20:52:37.943640 [info]:timer tick
+2025-11-28 20:52:42.943860 [info]:timer tick
+2025-11-28 20:52:47.943985 [info]:timer tick
+2025-11-28 20:52:52.944310 [info]:timer tick
+2025-11-28 20:52:57.944600 [info]:timer tick
+2025-11-28 20:53:02.945012 [info]:timer tick
+2025-11-28 20:53:07.945227 [info]:timer tick
+2025-11-28 20:53:12.945423 [info]:timer tick
+2025-11-28 20:53:17.945792 [info]:timer tick
+2025-11-28 20:53:22.945940 [info]:timer tick
+2025-11-28 20:53:27.946183 [info]:timer tick
+2025-11-28 20:53:32.946307 [info]:timer tick
+2025-11-28 20:53:37.946643 [info]:timer tick
+2025-11-28 20:53:42.946837 [info]:timer tick
+2025-11-28 20:53:47.947332 [info]:timer tick
+2025-11-28 20:53:52.947599 [info]:timer tick
+2025-11-28 20:53:57.947695 [info]:timer tick
+2025-11-28 20:54:02.948029 [info]:timer tick
+2025-11-28 20:54:07.948193 [info]:timer tick
+2025-11-28 20:54:12.948440 [info]:timer tick
+2025-11-28 20:54:17.948746 [info]:timer tick
+2025-11-28 20:54:22.950352 [info]:timer tick
+2025-11-28 20:54:27.950772 [info]:timer tick
+2025-11-28 20:54:32.950921 [info]:timer tick
+2025-11-28 20:54:37.951028 [info]:timer tick
+2025-11-28 20:54:42.951396 [info]:timer tick
+2025-11-28 20:54:47.951622 [info]:timer tick
+2025-11-28 20:54:52.951777 [info]:timer tick
+2025-11-28 20:54:57.952035 [info]:timer tick
+2025-11-28 20:55:02.952322 [info]:timer tick
+2025-11-28 20:55:07.952471 [info]:timer tick
+2025-11-28 20:55:12.952650 [info]:timer tick
+2025-11-28 20:55:17.952820 [info]:timer tick
+2025-11-28 20:55:22.953145 [info]:timer tick
+2025-11-28 20:55:27.953337 [info]:timer tick
+2025-11-28 20:55:32.953496 [info]:timer tick
+2025-11-28 20:55:37.953638 [info]:timer tick
+2025-11-28 20:55:42.953792 [info]:timer tick
+2025-11-28 20:55:47.954075 [info]:timer tick
+2025-11-28 20:55:52.954537 [info]:timer tick
+2025-11-28 20:55:57.954696 [info]:timer tick
+2025-11-28 20:56:02.954771 [info]:timer tick
+2025-11-28 20:56:07.954947 [info]:timer tick
+2025-11-28 20:56:12.955359 [info]:timer tick
+2025-11-28 20:56:17.955749 [info]:timer tick
+2025-11-28 20:56:22.956056 [info]:timer tick
+2025-11-28 20:56:27.956145 [info]:timer tick
+2025-11-28 20:56:32.956452 [info]:timer tick
+2025-11-28 20:56:37.956658 [info]:timer tick
+2025-11-28 20:56:42.960200 [info]:timer tick
+2025-11-28 20:56:47.960327 [info]:timer tick
+2025-11-28 20:56:52.960727 [info]:timer tick
+2025-11-28 20:56:57.960832 [info]:timer tick
+2025-11-28 20:57:02.961198 [info]:timer tick
+2025-11-28 20:57:07.961955 [info]:timer tick
+2025-11-28 20:57:12.962238 [info]:timer tick
+2025-11-28 20:57:17.962399 [info]:timer tick
+2025-11-28 20:57:22.962586 [info]:timer tick
+2025-11-28 20:57:27.962851 [info]:timer tick
+2025-11-28 20:57:32.963434 [info]:timer tick
+2025-11-28 20:57:37.963634 [info]:timer tick
+2025-11-28 20:57:42.963887 [info]:timer tick
+2025-11-28 20:57:47.964289 [info]:timer tick
+2025-11-28 20:57:52.964449 [info]:timer tick
+2025-11-28 20:57:57.964601 [info]:timer tick
+2025-11-28 20:58:02.964821 [info]:timer tick
+2025-11-28 20:58:07.965045 [info]:timer tick
+2025-11-28 20:58:12.965154 [info]:timer tick
+2025-11-28 20:58:17.965416 [info]:timer tick
+2025-11-28 20:58:22.965595 [info]:timer tick
+2025-11-28 20:58:27.965773 [info]:timer tick
+2025-11-28 20:58:32.966348 [info]:timer tick
+2025-11-28 20:58:37.966531 [info]:timer tick
+2025-11-28 20:58:42.966662 [info]:timer tick
+2025-11-28 20:58:47.966806 [info]:timer tick
+2025-11-28 20:58:52.966995 [info]:timer tick
+2025-11-28 20:58:57.967141 [info]:timer tick
+2025-11-28 20:59:02.967457 [info]:timer tick
+2025-11-28 20:59:07.967633 [info]:timer tick
+2025-11-28 20:59:12.967774 [info]:timer tick
+2025-11-28 20:59:17.967933 [info]:timer tick
+2025-11-28 20:59:22.968216 [info]:timer tick
+2025-11-28 20:59:27.968544 [info]:timer tick
+2025-11-28 20:59:32.968674 [info]:timer tick
+2025-11-28 20:59:37.968721 [info]:timer tick
+2025-11-28 20:59:42.968851 [info]:timer tick
+2025-11-28 20:59:47.969050 [info]:timer tick
+2025-11-28 20:59:52.969279 [info]:timer tick
+2025-11-28 20:59:57.969469 [info]:timer tick
+2025-11-28 21:00:02.969615 [info]:timer tick
+2025-11-28 21:00:07.970049 [info]:timer tick
+2025-11-28 21:00:12.970239 [info]:timer tick
+2025-11-28 21:00:17.970420 [info]:timer tick
+2025-11-28 21:00:22.971138 [info]:timer tick
+2025-11-28 21:00:27.971254 [info]:timer tick
+2025-11-28 21:00:32.971442 [info]:timer tick
+2025-11-28 21:00:37.971686 [info]:timer tick
+2025-11-28 21:00:42.972075 [info]:timer tick
+2025-11-28 21:00:47.972436 [info]:timer tick
+2025-11-28 21:00:52.972818 [info]:timer tick
+2025-11-28 21:00:57.973284 [info]:timer tick
+2025-11-28 21:01:02.973579 [info]:timer tick
+2025-11-28 21:01:07.974056 [info]:timer tick
+2025-11-28 21:01:12.974470 [info]:timer tick
+2025-11-28 21:01:17.974613 [info]:timer tick
+2025-11-28 21:01:22.974775 [info]:timer tick
+2025-11-28 21:01:27.974990 [info]:timer tick
+2025-11-28 21:01:32.975298 [info]:timer tick
+2025-11-28 21:01:37.975454 [info]:timer tick
+2025-11-28 21:01:42.975923 [info]:timer tick
+2025-11-28 21:01:47.976030 [info]:timer tick
+2025-11-28 21:01:52.976222 [info]:timer tick
+2025-11-28 21:01:57.976653 [info]:timer tick
+2025-11-28 21:02:02.977033 [info]:timer tick
+2025-11-28 21:02:07.977192 [info]:timer tick
+2025-11-28 21:02:12.977438 [info]:timer tick
+2025-11-28 21:02:17.977799 [info]:timer tick
+2025-11-28 21:02:22.978370 [info]:timer tick
+2025-11-28 21:02:27.978676 [info]:timer tick
+2025-11-28 21:02:32.978891 [info]:timer tick
+2025-11-28 21:02:37.979024 [info]:timer tick
+2025-11-28 21:02:42.979301 [info]:timer tick
+2025-11-28 21:02:47.979472 [info]:timer tick
+2025-11-28 21:02:52.979881 [info]:timer tick
+2025-11-28 21:02:57.980054 [info]:timer tick
+2025-11-28 21:03:02.980258 [info]:timer tick
+2025-11-28 21:03:07.980808 [info]:timer tick
+2025-11-28 21:03:12.981117 [info]:timer tick
+2025-11-28 21:03:17.981332 [info]:timer tick
+2025-11-28 21:03:22.981749 [info]:timer tick
+2025-11-28 21:03:27.982003 [info]:timer tick
+2025-11-28 21:03:32.982430 [info]:timer tick
+2025-11-28 21:03:37.982774 [info]:timer tick
+2025-11-28 21:03:42.983193 [info]:timer tick
+2025-11-28 21:03:47.983470 [info]:timer tick
+2025-11-28 21:03:52.984256 [info]:timer tick
+2025-11-28 21:03:57.984500 [info]:timer tick
+2025-11-28 21:04:02.984607 [info]:timer tick
+2025-11-28 21:04:03.547735 [info]:deal with the client(127.0.0.1)
+2025-11-28 21:04:03.547781 [info]:adjust timer once
+2025-11-28 21:04:03.547933 [info]:GET /login HTTP/1.1
+2025-11-28 21:04:03.547949 [info]:Host: localhost
+2025-11-28 21:04:03.547953 [info]:Content-Length: 2
+2025-11-28 21:04:03.547956 [info]:Connection: close
+2025-11-28 21:04:03.547959 [info]:
+2025-11-28 21:04:03.547961 [info]:{"passwd":"111","user":"111"}
+2025-11-28 21:09:07.121019 [info]:deal with the client(127.0.0.1)
+2025-11-28 21:09:07.121138 [info]:adjust timer once
+2025-11-28 21:09:07.121142 [info]:GET /login HTTP/1.1
+2025-11-28 21:09:07.121191 [info]:Host: localhost
+2025-11-28 21:09:07.121195 [info]:Content-Length: 29
+2025-11-28 21:09:07.121198 [info]:Connection: close
+2025-11-28 21:09:07.121201 [info]:
+2025-11-28 21:09:07.121205 [info]:{"passwd":"111","user":"111"}
+2025-11-28 21:09:07.121248 [info]:request:HTTP/1.1 200 OK
+
+2025-11-28 21:09:07.121251 [info]:request:HTTP/1.1 200 OK
+Content-Length:20
+
+2025-11-28 21:09:07.121255 [info]:request:HTTP/1.1 200 OK
+Content-Length:20
+Connection:close
+
+2025-11-28 21:09:07.121258 [info]:request:HTTP/1.1 200 OK
+Content-Length:20
+Connection:close
+
+
+2025-11-28 21:09:07.121325 [info]:close fd 16
+2025-11-28 21:09:08.244561 [info]:timer tick
+2025-11-28 21:09:13.244763 [info]:timer tick
+2025-11-28 21:09:18.245322 [info]:timer tick
+2025-11-28 21:09:23.245611 [info]:timer tick
+2025-11-28 21:09:28.245864 [info]:timer tick
+2025-11-28 21:09:33.246289 [info]:timer tick
+2025-11-28 21:09:38.246697 [info]:timer tick
+2025-11-28 21:09:43.246889 [info]:timer tick
+2025-11-28 21:09:48.247386 [info]:timer tick
+2025-11-28 21:09:53.247843 [info]:timer tick
+2025-11-28 21:09:58.248020 [info]:timer tick
+2025-11-28 21:10:03.248478 [info]:timer tick
+2025-11-28 21:10:08.248631 [info]:timer tick
+2025-11-28 21:10:13.248804 [info]:timer tick
+2025-11-28 21:10:18.249277 [info]:timer tick
+2025-11-28 21:10:23.249587 [info]:timer tick
+2025-11-28 21:10:28.249978 [info]:timer tick
+2025-11-28 21:10:33.250052 [info]:timer tick
+2025-11-28 21:10:38.250278 [info]:timer tick
+2025-11-28 21:10:43.250449 [info]:timer tick
+2025-11-28 21:10:48.250534 [info]:timer tick
+2025-11-28 21:10:53.251041 [info]:timer tick
+2025-11-28 21:10:58.251539 [info]:timer tick
+2025-11-28 21:11:03.252356 [info]:timer tick
+2025-11-28 21:11:08.252559 [info]:timer tick
+2025-11-28 21:11:13.252675 [info]:timer tick
+2025-11-28 21:11:18.252860 [info]:timer tick
+2025-11-28 21:11:23.253225 [info]:timer tick
+2025-11-28 21:11:28.253684 [info]:timer tick
+2025-11-28 21:11:33.254025 [info]:timer tick
+2025-11-28 21:11:38.254251 [info]:timer tick
+2025-11-28 21:11:43.254304 [info]:timer tick
+2025-11-28 21:11:48.254760 [info]:timer tick
+2025-11-28 21:11:53.254929 [info]:timer tick
+2025-11-28 21:11:58.255650 [info]:timer tick
+2025-11-28 21:12:03.255750 [info]:timer tick
+2025-11-28 21:12:08.256298 [info]:timer tick
+2025-11-28 21:12:13.256675 [info]:timer tick
+2025-11-28 21:12:18.256924 [info]:timer tick
+2025-11-28 21:12:23.257084 [info]:timer tick
+2025-11-28 21:12:28.257335 [info]:timer tick
+2025-11-28 21:12:33.257484 [info]:timer tick
+2025-11-28 21:12:38.257798 [info]:timer tick
+2025-11-28 21:12:43.257968 [info]:timer tick
+2025-11-28 21:12:48.258336 [info]:timer tick
+2025-11-28 21:12:53.258419 [info]:timer tick
+2025-11-28 21:12:58.258488 [info]:timer tick
+2025-11-28 21:13:03.258684 [info]:timer tick
+2025-11-28 21:13:08.259443 [info]:timer tick
+2025-11-28 21:13:13.259509 [info]:timer tick
+2025-11-28 21:13:18.260027 [info]:timer tick
+2025-11-28 21:13:23.260562 [info]:timer tick
+2025-11-28 21:13:28.260799 [info]:timer tick
+2025-11-28 21:13:33.260898 [info]:timer tick
+2025-11-28 21:13:38.261931 [info]:timer tick
+2025-11-28 21:13:43.262305 [info]:timer tick
+2025-11-28 21:13:48.262378 [info]:timer tick
+2025-11-28 21:13:53.262607 [info]:timer tick
+2025-11-28 21:13:58.262708 [info]:timer tick
+2025-11-28 21:14:03.263014 [info]:timer tick
+2025-11-28 21:14:08.263151 [info]:timer tick
+2025-11-28 21:14:13.263507 [info]:timer tick
+2025-11-28 21:14:18.263873 [info]:timer tick
+2025-11-28 21:14:23.264098 [info]:timer tick
+2025-11-28 21:14:28.264404 [info]:timer tick
+2025-11-28 21:14:33.264732 [info]:timer tick
+2025-11-28 21:14:38.264862 [info]:timer tick
+2025-11-28 21:14:43.265039 [info]:timer tick
+2025-11-28 21:14:48.265204 [info]:timer tick
+2025-11-28 21:14:53.265425 [info]:timer tick
+2025-11-28 21:14:58.265657 [info]:timer tick
+2025-11-28 21:15:03.265897 [info]:timer tick
+2025-11-28 21:15:08.266315 [info]:timer tick
+2025-11-28 21:16:53.636886 [info]:timer tick
+2025-11-28 21:16:53.919820 [info]:deal with the client(127.0.0.1)
+2025-11-28 21:16:53.919888 [info]:adjust timer once
+2025-11-28 21:16:53.919910 [info]:GET /login HTTP/1.1
+2025-11-28 21:16:53.919932 [info]:Host: localhost
+2025-11-28 21:16:53.919936 [info]:Content-Length: 29
+2025-11-28 21:16:53.919939 [info]:Connection: close
+2025-11-28 21:16:53.919943 [info]:
+2025-11-28 21:16:53.919946 [info]:{"passwd":"111","user":"111"}
+2025-11-28 21:16:53.920017 [info]:HTTP/1.1 200 OK
+Content-Length:20
+Connection:close
+
+
+2025-11-28 21:16:53.920071 [info]:close fd 16
+2025-11-28 21:16:58.637364 [info]:timer tick
+2025-11-28 21:56:48.459387 [info]:timer tick
+2025-11-28 21:56:53.459597 [info]:timer tick
+2025-11-28 22:07:03.294865 [info]:timer tick
+2025-11-28 22:07:08.295043 [info]:timer tick
+2025-11-28 22:07:13.295603 [info]:timer tick
+2025-11-28 22:07:14.737159 [info]:deal with the client(127.0.0.1)
+2025-11-28 22:07:14.737199 [info]:adjust timer once
+2025-11-28 22:07:14.737229 [info]:GET /login HTTP/1.1
+2025-11-28 22:07:14.737247 [info]:Host: localhost
+2025-11-28 22:07:14.737251 [info]:Content-Length: 29
+2025-11-28 22:07:14.737255 [info]:Connection: close
+2025-11-28 22:07:14.737258 [info]:
+2025-11-28 22:07:14.737261 [info]:{"passwd":"111","user":"111"}
+2025-11-28 22:07:14.737322 [info]:HTTP/1.1 200 OK
+Content-Length:20
+Connection:close
+
+
+2025-11-28 22:07:14.737327 [info]:{"status":"success"}
+2025-11-28 22:07:14.737366 [info]:close fd 16
+2025-11-28 22:07:18.295698 [info]:timer tick
+2025-11-28 22:07:23.296016 [info]:timer tick
+2025-11-28 22:07:28.296146 [info]:timer tick
+2025-11-28 22:07:33.296391 [info]:timer tick
+2025-11-28 22:07:38.296506 [info]:timer tick
+2025-11-28 22:07:43.296736 [info]:timer tick
+2025-11-28 22:07:48.296918 [info]:timer tick
+2025-11-28 22:07:53.297142 [info]:timer tick
+2025-11-28 22:07:58.297529 [info]:timer tick
+2025-11-28 22:08:03.297883 [info]:timer tick
+2025-11-28 22:08:08.298021 [info]:timer tick
+2025-11-28 22:08:13.298223 [info]:timer tick
+2025-11-28 22:08:18.298544 [info]:timer tick
+2025-11-28 22:08:23.298882 [info]:timer tick
+2025-11-28 22:08:28.299093 [info]:timer tick
+2025-11-28 22:08:33.299168 [info]:timer tick
+2025-11-28 22:08:38.299229 [info]:timer tick
+2025-11-28 22:08:43.299553 [info]:timer tick
+2025-11-28 22:08:48.299994 [info]:timer tick
+2025-11-28 22:08:51.554194 [info]:close fd 16
+2025-11-28 22:08:53.300369 [info]:timer tick
+2025-11-28 22:08:58.300824 [info]:timer tick
+2025-11-28 22:09:03.301159 [info]:timer tick
+2025-11-28 22:09:08.301365 [info]:timer tick
+2025-11-28 22:09:13.301751 [info]:timer tick
+2025-11-28 22:09:18.302364 [info]:timer tick
+2025-11-28 22:09:23.302645 [info]:timer tick
+2025-11-28 22:09:28.302976 [info]:timer tick
+2025-11-28 22:09:32.771335 [info]:deal with the client(127.0.0.1)
+2025-11-28 22:09:32.771393 [info]:adjust timer once
+2025-11-28 22:09:32.771435 [info]:GET /login HTTP/1.1
+2025-11-28 22:09:32.771459 [info]:Host: localhost
+2025-11-28 22:09:32.771463 [info]:Content-Length: 29
+2025-11-28 22:09:32.771467 [info]:Connection: close
+2025-11-28 22:09:32.771470 [info]:
+2025-11-28 22:09:32.771474 [info]:{"passwd":"111","user":"111"}
+2025-11-28 22:09:32.771545 [info]:HTTP/1.1 200 OK
+Content-Length:20
+Connection:close
+
+
+2025-11-28 22:09:32.771549 [info]:{"status":"success"}
+2025-11-28 22:09:32.771592 [info]:close fd 16
+2025-11-28 22:09:33.303224 [info]:timer tick
+2025-11-28 22:09:36.602038 [info]:deal with the client(127.0.0.1)
+2025-11-28 22:09:36.602125 [info]:adjust timer once
+2025-11-28 22:09:36.602189 [info]:GET /login HTTP/1.1
+2025-11-28 22:09:36.602210 [info]:Host: localhost
+2025-11-28 22:09:36.602214 [info]:Content-Length: 29
+2025-11-28 22:09:36.602218 [info]:Connection: close
+2025-11-28 22:09:36.602230 [info]:
+2025-11-28 22:09:36.602233 [info]:{"passwd":"111","user":"111"}
+2025-11-28 22:09:36.602384 [info]:HTTP/1.1 200 OK
+Content-Length:20
+Connection:close
+
+
+2025-11-28 22:09:36.602400 [info]:{"status":"success"}
+2025-11-28 22:09:36.602461 [info]:close fd 16
+2025-11-28 22:09:37.691329 [info]:deal with the client(127.0.0.1)
+2025-11-28 22:09:37.691383 [info]:adjust timer once
+2025-11-28 22:09:37.691432 [info]:GET /login HTTP/1.1
+2025-11-28 22:09:37.691450 [info]:Host: localhost
+2025-11-28 22:09:37.691454 [info]:Content-Length: 29
+2025-11-28 22:09:37.691457 [info]:Connection: close
+2025-11-28 22:09:37.691460 [info]:
+2025-11-28 22:09:37.691463 [info]:{"passwd":"111","user":"111"}
+2025-11-28 22:09:37.691534 [info]:HTTP/1.1 200 OK
+Content-Length:20
+Connection:close
+
+
+2025-11-28 22:09:37.691538 [info]:{"status":"success"}
+2025-11-28 22:09:37.691580 [info]:close fd 16
+2025-11-28 22:09:38.303447 [info]:timer tick
+2025-11-28 22:09:38.681244 [info]:deal with the client(127.0.0.1)
+2025-11-28 22:09:38.681291 [info]:adjust timer once
+2025-11-28 22:09:38.681319 [info]:GET /login HTTP/1.1
+2025-11-28 22:09:38.681326 [info]:Host: localhost
+2025-11-28 22:09:38.681329 [info]:Content-Length: 29
+2025-11-28 22:09:38.681332 [info]:Connection: close
+2025-11-28 22:09:38.681335 [info]:
+2025-11-28 22:09:38.681338 [info]:{"passwd":"111","user":"111"}
+2025-11-28 22:09:38.681392 [info]:HTTP/1.1 200 OK
+Content-Length:20
+Connection:close
+
+
+2025-11-28 22:09:38.681395 [info]:{"status":"success"}
+2025-11-28 22:09:38.681449 [info]:close fd 16
+2025-11-28 22:09:39.394591 [info]:deal with the client(127.0.0.1)
+2025-11-28 22:09:39.394648 [info]:adjust timer once
+2025-11-28 22:09:39.394740 [info]:GET /login HTTP/1.1
+2025-11-28 22:09:39.394757 [info]:Host: localhost
+2025-11-28 22:09:39.394761 [info]:Content-Length: 29
+2025-11-28 22:09:39.394764 [info]:Connection: close
+2025-11-28 22:09:39.394767 [info]:
+2025-11-28 22:09:39.394770 [info]:{"passwd":"111","user":"111"}
+2025-11-28 22:09:39.394845 [info]:HTTP/1.1 200 OK
+Content-Length:20
+Connection:close
+
+
+2025-11-28 22:09:39.394881 [info]:{"status":"success"}
+2025-11-28 22:09:39.394918 [info]:close fd 16
+2025-11-28 22:09:43.303803 [info]:timer tick
+2025-11-28 22:09:48.304032 [info]:timer tick
+2025-11-28 22:09:53.304287 [info]:timer tick
+2025-11-28 22:09:58.304491 [info]:timer tick
+2025-11-28 22:10:03.304792 [info]:timer tick
+2025-11-28 22:10:08.305029 [info]:timer tick
+2025-11-28 22:10:08.448348 [info]:deal with the client(127.0.0.1)
+2025-11-28 22:10:08.448380 [info]:adjust timer once
+2025-11-28 22:10:08.448411 [info]:GET /login HTTP/1.1
+2025-11-28 22:10:08.448418 [info]:Host: localhost
+2025-11-28 22:10:08.448421 [info]:Content-Length: 29
+2025-11-28 22:10:08.448425 [info]:Connection: close
+2025-11-28 22:10:08.448428 [info]:
+2025-11-28 22:10:08.448431 [info]:{"passwd":"111","user":"111"}
+2025-11-28 22:10:08.448477 [info]:HTTP/1.1 200 OK
+Content-Length:20
+Connection:close
+
+
+2025-11-28 22:10:08.448481 [info]:{"status":"success"}
+2025-11-28 22:10:08.448527 [info]:close fd 16
+2025-11-28 22:10:13.305309 [info]:timer tick
+2025-11-28 22:10:18.305835 [info]:timer tick
+2025-11-28 22:10:22.808862 [info]:deal with the client(127.0.0.1)
+2025-11-28 22:10:22.808912 [info]:adjust timer once
+2025-11-28 22:10:22.808937 [info]:GET /login HTTP/1.1
+2025-11-28 22:10:22.808959 [info]:Host: localhost
+2025-11-28 22:10:22.808963 [info]:Content-Length: 29
+2025-11-28 22:10:22.808967 [info]:Connection: close
+2025-11-28 22:10:22.808970 [info]:
+2025-11-28 22:10:22.808973 [info]:{"passwd":"111","user":"111"}
+2025-11-28 22:10:22.809035 [info]:HTTP/1.1 200 OK
+Content-Length:20
+Connection:close
+
+
+2025-11-28 22:10:22.809040 [info]:{"status":"success"}
+2025-11-28 22:10:22.809235 [info]:close fd 16
+2025-11-28 22:10:23.306292 [info]:timer tick
+2025-11-28 22:10:28.306392 [info]:timer tick
+2025-11-28 22:11:11.448005 [info]:deal with the client(127.0.0.1)
+2025-11-28 22:11:11.448069 [info]:adjust timer once
+2025-11-28 22:11:11.448175 [info]:GET /login HTTP/1.1
+2025-11-28 22:11:11.448190 [info]:Host: localhost
+2025-11-28 22:11:11.448202 [info]:Content-Length: 30
+2025-11-28 22:11:11.448206 [info]:Connection: close
+2025-11-28 22:11:11.448209 [info]:
+2025-11-28 22:11:11.448212 [info]:{"passwd":"1111","user":"111"}
+2025-11-28 22:11:11.448300 [info]:HTTP/1.1 200 OK
+Content-Length:18
+Connection:close
+
+
+2025-11-28 22:11:11.448323 [info]:{"status":"error"}
+2025-11-28 22:11:11.448410 [info]:close fd 16
+2025-11-28 22:11:14.743923 [info]:timer tick
+2025-11-28 22:11:15.560805 [info]:deal with the client(127.0.0.1)
+2025-11-28 22:11:15.560849 [info]:adjust timer once
+2025-11-28 22:11:15.560892 [info]:GET /login HTTP/1.1
+2025-11-28 22:11:15.560907 [info]:Host: localhost
+2025-11-28 22:11:15.560910 [info]:Content-Length: 30
+2025-11-28 22:11:15.560914 [info]:Connection: close
+2025-11-28 22:11:15.560916 [info]:
+2025-11-28 22:11:15.560919 [info]:{"passwd":"1111","user":"111"}
+2025-11-28 22:11:15.560987 [info]:HTTP/1.1 200 OK
+Content-Length:18
+Connection:close
+
+
+2025-11-28 22:11:15.560991 [info]:{"status":"error"}
+2025-11-28 22:11:15.561031 [info]:close fd 16
+2025-11-28 22:11:16.447927 [info]:deal with the client(127.0.0.1)
+2025-11-28 22:11:16.447983 [info]:adjust timer once
+2025-11-28 22:11:16.448055 [info]:GET /login HTTP/1.1
+2025-11-28 22:11:16.448073 [info]:Host: localhost
+2025-11-28 22:11:16.448077 [info]:Content-Length: 30
+2025-11-28 22:11:16.448080 [info]:Connection: close
+2025-11-28 22:11:16.448083 [info]:
+2025-11-28 22:11:16.448086 [info]:{"passwd":"1111","user":"111"}
+2025-11-28 22:11:16.448217 [info]:HTTP/1.1 200 OK
+Content-Length:18
+Connection:close
+
+
+2025-11-28 22:11:16.448227 [info]:{"status":"error"}
+2025-11-28 22:11:16.448256 [info]:close fd 16
+2025-11-28 22:11:17.789878 [info]:deal with the client(127.0.0.1)
+2025-11-28 22:11:17.789949 [info]:adjust timer once
+2025-11-28 22:11:17.789985 [info]:GET /login HTTP/1.1
+2025-11-28 22:11:17.790003 [info]:Host: localhost
+2025-11-28 22:11:17.790006 [info]:Content-Length: 30
+2025-11-28 22:11:17.790010 [info]:Connection: close
+2025-11-28 22:11:17.790012 [info]:
+2025-11-28 22:11:17.790015 [info]:{"passwd":"1111","user":"111"}
+2025-11-28 22:11:17.790089 [info]:HTTP/1.1 200 OK
+Content-Length:18
+Connection:close
+
+
+2025-11-28 22:11:17.790119 [info]:{"status":"error"}
+2025-11-28 22:11:17.790160 [info]:close fd 16
+2025-11-28 22:11:19.744061 [info]:timer tick
