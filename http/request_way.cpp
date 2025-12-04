@@ -127,6 +127,7 @@ void file_upload_way::request_stratege(std::string &url, std::string &content,
                                        MYSQL *mysql,
                                        std::string &response_content) {
 
+  // 文件上传逻辑
   std::string user;
   std::string virtual_path;
   std::string document_content;
