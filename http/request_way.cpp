@@ -128,26 +128,159 @@ void file_upload_way::request_stratege(std::string &url, std::string &content,
                                        std::string &response_content) {
 
   // 文件上传逻辑
-  std::string user;
-  std::string virtual_path;
-  std::string document_content;
-  std::string file_id = generateUUID();
-  std::string actual_path;
-  std::string sha256_num;
-  fs::path file_path;
   json post_client = json::parse(content);
   json response_json;
+  std::string username = post_client["username"];
+  std::string file_size = post_client["file_size"];
+  std::string virtual_file_path = post_client["virtual_file_path"];
+  std::string document_content = post_client["document_content"];
+  std::string actual_file_path;
+  std::string sha256_num = post_client["sha256_num"];
+  std::string file_id;
+  std::stringstream select_file_table_sql;
 
-  user = post_client["user"];
-  // 上传路径是虚拟路径
-  virtual_path = post_client["virtual_path"];
-  document_content = post_client["document_content"];
-  actual_path = generateStoragePath(file_id);
-  sha256_num = post_client["sha256_num"];
-  file_path = actual_path;
+  select_file_table_sql
+      << "select file_id,sha256_num from file_table where sha256_num = '"
+      << sha256_num << "'";
+  m_lock.lock();
+  int res = mysql_query(mysql, select_file_table_sql.str().c_str());
+  m_lock.unlock();
+  if (res) {
+    response_json["status"] = "error";
+    response_json["message"] = "sql query error";
+    response_content = response_json.dump(4);
+    return;
+  } else {
+    MYSQL_RES *result = mysql_store_result(mysql);
+
+    file_id =
+        result->row_count > 0 ? mysql_fetch_row(result)[0] : generateUUID();
+
+    if (result->row_count > 0) {
+      // 文件存在,增加引用次数,并向联系表增加一个记录
+      std::stringstream update_file_table_sql;
+      std::stringstream insert_own_table_sql;
+      update_file_table_sql
+          << "update file_table set citation_count =citation_count  + 1 where "
+             "sha256_num = '"
+          << sha256_num << "'";
+      insert_own_table_sql
+          << "insert into own_table(file_id, virtual_file_path, "
+             "username) values('"
+          << file_id << "', '" << virtual_file_path << "', '" << username
+          << "')";
+      m_lock.lock();
+      // 开始事务
+      res = mysql_query(mysql, "START TRANSACTION");
+      if (res) {
+        m_lock.unlock();
+        response_json["status"] = "error";
+        response_json["message"] = "启动事务失败";
+        response_content = response_json.dump(4);
+        mysql_free_result(result);
+        return;
+      }
+      // 执行更新
+      res = mysql_query(mysql, update_file_table_sql.str().c_str());
+      if (res) {
+        mysql_query(mysql, "ROLLBACK");
+        m_lock.unlock();
+        response_json["status"] = "error";
+        response_json["message"] = "SQL更新错误";
+        response_content = response_json.dump(4);
+        mysql_free_result(result);
+        return;
+      }
+      // 执行插入
+      res = mysql_query(mysql, insert_own_table_sql.str().c_str());
+      if (res) {
+        mysql_query(mysql, "ROLLBACK");
+        m_lock.unlock();
+        response_json["status"] = "error";
+        response_json["message"] = "SQL插入错误";
+        response_content = response_json.dump(4);
+        mysql_free_result(result);
+        return;
+      }
+      // 提交事务
+      res = mysql_query(mysql, "COMMIT");
+      if (res) {
+        mysql_query(mysql, "ROLLBACK");
+        m_lock.unlock();
+        response_json["status"] = "error";
+        response_json["message"] = "提交事务失败";
+        response_content = response_json.dump(4);
+        mysql_free_result(result);
+        return;
+      }
+      m_lock.unlock();
+      response_json["status"] = "success";
+      response_json["message"] = "file already exists, citation count "
+                                 "increased, virtual path added";
+      response_content = response_json.dump(4);
+      return;
+    }
+    mysql_free_result(result);
+  }
+  // 文件不存在,保存文件,并向文件表和联系表增加记录
+  actual_file_path = generateStoragePath(file_id);
+  std::stringstream insert_file_table_sql;
+  std::stringstream insert_own_table_sql;
+  insert_file_table_sql
+      << "insert into file_table(file_id, file_size,actual_file_path, "
+         "citation_count,sha256_num) "
+      << "values('" << file_id << "', '" << file_size << "', '"
+      << actual_file_path << "', 1, '" << sha256_num << "')";
+  insert_own_table_sql << "insert into own_table(file_id, virtual_file_path, "
+                          "username) values('"
+                       << file_id << "', '" << virtual_file_path << "', '"
+                       << username << "')";
+  m_lock.lock();
+  // 开始事务
+  res = mysql_query(mysql, "START TRANSACTION");
+  if (res) {
+    m_lock.unlock();
+    response_json["status"] = "error";
+    response_json["message"] = "启动事务失败";
+    response_content = response_json.dump(4);
+    return;
+  }
+  res = mysql_query(mysql, insert_file_table_sql.str().c_str());
+  if (res) {
+    mysql_query(mysql, "ROLLBACK");
+    m_lock.unlock();
+    response_json["status"] = "error";
+    response_json["message"] = "sql插入错误";
+    response_content = response_json.dump(4);
+    return;
+  }
+  // 执行插入
+  res = mysql_query(mysql, insert_own_table_sql.str().c_str());
+  if (res) {
+    mysql_query(mysql, "ROLLBACK");
+    m_lock.unlock();
+    response_json["status"] = "error";
+    response_json["message"] = "SQL插入错误";
+    response_content = response_json.dump(4);
+    return;
+  }
+  // 提交事务
+  res = mysql_query(mysql, "COMMIT");
+  if (res) {
+    mysql_query(mysql, "ROLLBACK");
+    m_lock.unlock();
+    response_json["status"] = "error";
+    response_json["message"] = "提交事务失败";
+    response_content = response_json.dump(4);
+    return;
+  }
+  m_lock.unlock();
+
+  fs::path file_path;
+
   fs::create_directories(file_path.parent_path());
 
-  std::ofstream output_file(actual_path, std::ios::binary);
+  std::ofstream output_file(actual_file_path, std::ios::binary);
   if (!output_file.is_open()) {
     response_json["status"] = "error";
     response_json["message"] = "file creation failed";
