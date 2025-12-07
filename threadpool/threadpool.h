@@ -43,6 +43,9 @@ threadpool<T>::threadpool(int actor_model, connection_pool *connPool,
   if (!m_threads)
     throw std::exception();
   for (int i = 0; i < thread_number; ++i) {
+    // 非静态成员函数在调用时隐式传递 `this` 指针，
+    // 这与线程库期望的签名不匹配。若强行将非静态成员函数作为线程函数，
+    // 需要复杂的类型转换和包装，容易引发未定义行为。
     if (pthread_create(m_threads + i, NULL, worker, this) != 0) {
       delete[] m_threads;
       throw std::exception();

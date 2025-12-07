@@ -138,7 +138,6 @@ void file_upload_way::request_stratege(std::string &url, std::string &content,
   std::string sha256_num = post_client["sha256_num"];
   std::string file_id;
   std::stringstream select_file_table_sql;
-
   select_file_table_sql
       << "select file_id,sha256_num from file_table where sha256_num = '"
       << sha256_num << "'";
@@ -277,7 +276,8 @@ void file_upload_way::request_stratege(std::string &url, std::string &content,
   m_lock.unlock();
 
   fs::path file_path;
-
+  file_path = actual_file_path;
+  // 目录存在时不会报错
   fs::create_directories(file_path.parent_path());
 
   std::ofstream output_file(actual_file_path, std::ios::binary);
@@ -289,8 +289,11 @@ void file_upload_way::request_stratege(std::string &url, std::string &content,
   }
   output_file.write(document_content.c_str(), document_content.size());
   output_file.close();
+
   response_json["status"] = "success";
+  response_json["message"] = "file uploaded successfully";
   response_content = response_json.dump(4);
+  return;
 }
 static auto_register<file_upload_way> file_upload_auto_register;
 

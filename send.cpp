@@ -29,7 +29,7 @@ std::string base64_encode(const std::string &input) {
 
 int main() {
   json content;
-  content["user"] = "11";
+  content["username"] = "11";
   content["passwd"] = "11";
   std::string filepath("./test.txt");
   std::string sha256_num = calculateFileSHA256(filepath);
@@ -43,14 +43,14 @@ int main() {
   std::string file_content(size, ' ');
   file.read(&file_content[0], size);
 
-  file.close();
-
   std::cout << "sha256_num:";
   std::cout << sha256_num << std::endl;
   content["document_content"] = base64_encode(file_content);
   content["sha256_num"] = sha256_num.c_str();
-  content["virtual_path"] = "/";
+  content["virtual_file_path"] = "/test.txt";
+  content["file_size"] = std::to_string(size);
 
+  file.close();
   std::string content_string = content.dump();
   std::stringstream http_request;
 

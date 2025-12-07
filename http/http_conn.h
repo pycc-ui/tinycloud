@@ -31,8 +31,8 @@ using json = nlohmann::json;
 class http_conn {
 public:
   static const int FILENAME_LEN = 256; // 文件名最大长度
-  static const int READ_BUFFER_SIZE = 1024;
-  static const int WRITE_BUFFER_SIZE = 1024;
+  static const int READ_BUFFER_SIZE = 2048;
+  static const int WRITE_BUFFER_SIZE = 2048;
   enum METHOD {
     GET = 0,
     POST,
