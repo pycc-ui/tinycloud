@@ -126,7 +126,6 @@ static auto_register<file_download_way> file_download_auto_register;
 void file_upload_way::request_stratege(std::string &url, std::string &content,
                                        MYSQL *mysql,
                                        std::string &response_content) {
-
   // 文件上传逻辑
   json post_client = json::parse(content);
   json response_json;

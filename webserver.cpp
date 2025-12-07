@@ -187,8 +187,10 @@ void WebServer::adjust_timer(util_timer *timer) {
 }
 
 void WebServer::deal_timer(util_timer *timer, int sockfd) {
+  // 注销套接字
   timer->cb_func(&users_timer[sockfd]);
   if (timer) {
+    // 删除定时器
     utils.m_timer_lst.del_timer(timer);
   }
 
@@ -200,6 +202,8 @@ bool WebServer::dealclientdata() {
   socklen_t client_addrlength = sizeof(client_address);
   // ET or LT
   if (0 == m_LISTENTrigmode) {
+    // 即使对于同一个客户端的多个连接,会被处理多次
+    // 获得一个连接就增加一个套接字
     int connfd = accept(m_listenfd, (struct sockaddr *)&client_address,
                         &client_addrlength);
     if (connfd < 0) {
