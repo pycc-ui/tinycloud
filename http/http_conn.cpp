@@ -155,10 +155,57 @@ void http_conn::init() {
   timer_flag = 0;
   improv = 0;
   m_response_content = "";
+  read_buf_ptr = m_read_buf;
+  // 标记
 
   memset(m_read_buf, '\0', READ_BUFFER_SIZE);
   memset(m_write_buf, '\0', WRITE_BUFFER_SIZE);
   memset(m_real_file, '\0', FILENAME_LEN);
+}
+
+// 循环读取客户数据，直到无数据可读或对方关闭连接
+// 非阻塞ET工作模式下，需要一次性将数据读完
+// 读取所有数据,m_read_idx作为读到该位置的标志
+bool http_conn::read_once() {
+  int buf_size =
+      read_buf_ptr == m_read_buf ? READ_BUFFER_SIZE : READ_BUFFER_SIZE_IN_FILE;
+  if (m_read_idx >= buf_size) {
+    return false;
+  }
+
+  int bytes_read = 0;
+
+  // LT读取数据
+  if (0 == m_TRIGMode) {
+
+    bytes_read =
+        recv(m_sockfd, read_buf_ptr + m_read_idx, buf_size - m_read_idx, 0);
+    m_read_idx += bytes_read;
+
+    if (bytes_read <= 0) {
+      return false;
+    }
+
+    return true;
+  }
+
+  // ET读数据
+  else {
+    // 不采用
+    while (true) {
+      bytes_read = recv(m_sockfd, m_read_buf + m_read_idx,
+                        READ_BUFFER_SIZE - m_read_idx, 0);
+      if (bytes_read == -1) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK)
+          break;
+        return false;
+      } else if (bytes_read == 0) {
+        return false;
+      }
+      m_read_idx += bytes_read;
+    }
+    return true;
+  }
 }
 
 // 从状态机，用于分析出一行内容
@@ -178,65 +225,26 @@ LINE_OPEN，读取的行不完整
 http_conn::LINE_STATUS http_conn::parse_line() {
   char temp;
   for (; m_checked_idx < m_read_idx; ++m_checked_idx) {
-    temp = m_read_buf[m_checked_idx];
+    temp = read_buf_ptr[m_checked_idx];
     if (temp == '\r') {
       if ((m_checked_idx + 1) == m_read_idx)
         return LINE_OPEN;
-      else if (m_read_buf[m_checked_idx + 1] == '\n') {
-        m_read_buf[m_checked_idx++] = '\0';
-        m_read_buf[m_checked_idx++] = '\0';
+      else if (read_buf_ptr[m_checked_idx + 1] == '\n') {
+        read_buf_ptr[m_checked_idx++] = '\0';
+        read_buf_ptr[m_checked_idx++] = '\0';
         return LINE_OK;
       }
       return LINE_BAD;
     } else if (temp == '\n') {
-      if (m_checked_idx > 1 && m_read_buf[m_checked_idx - 1] == '\r') {
-        m_read_buf[m_checked_idx - 1] = '\0';
-        m_read_buf[m_checked_idx++] = '\0';
+      if (m_checked_idx > 1 && read_buf_ptr[m_checked_idx - 1] == '\r') {
+        read_buf_ptr[m_checked_idx - 1] = '\0';
+        read_buf_ptr[m_checked_idx++] = '\0';
         return LINE_OK;
       }
       return LINE_BAD;
     }
   }
   return LINE_OPEN;
-}
-
-// 循环读取客户数据，直到无数据可读或对方关闭连接
-// 非阻塞ET工作模式下，需要一次性将数据读完
-// 读取所有数据,m_read_idx作为读到该位置的标志
-bool http_conn::read_once() {
-  if (m_read_idx >= READ_BUFFER_SIZE) {
-    return false;
-  }
-  int bytes_read = 0;
-
-  // LT读取数据
-  if (0 == m_TRIGMode) {
-    bytes_read = recv(m_sockfd, m_read_buf + m_read_idx,
-                      READ_BUFFER_SIZE - m_read_idx, 0);
-    m_read_idx += bytes_read;
-
-    if (bytes_read <= 0) {
-      return false;
-    }
-
-    return true;
-  }
-  // ET读数据
-  else {
-    while (true) {
-      bytes_read = recv(m_sockfd, m_read_buf + m_read_idx,
-                        READ_BUFFER_SIZE - m_read_idx, 0);
-      if (bytes_read == -1) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK)
-          break;
-        return false;
-      } else if (bytes_read == 0) {
-        return false;
-      }
-      m_read_idx += bytes_read;
-    }
-    return true;
-  }
 }
 
 // 解析http请求行，获得请求方法，目标url及http版本号
@@ -552,14 +560,15 @@ bool http_conn::process_write(HTTP_CODE ret) {
   return true;
 }
 void http_conn::process() {
-  // 读报文
+  // 处理已经读的报文
   HTTP_CODE read_ret = process_read();
   if (read_ret == NO_REQUEST) {
     // 没读完继续读
     modfd(m_epollfd, m_sockfd, EPOLLIN, m_TRIGMode);
     return;
   }
-  // 写报文
+  // 处理分片传输所需要缓冲区的关键地方,这个函数需要修改,标记一下
+  //  增加要写的报文
   bool write_ret = process_write(read_ret);
   if (!write_ret) {
     close_conn();

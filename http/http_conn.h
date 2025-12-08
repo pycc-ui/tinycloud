@@ -32,7 +32,9 @@ class http_conn {
 public:
   static const int FILENAME_LEN = 256; // 文件名最大长度
   static const int READ_BUFFER_SIZE = 2048;
+  static const int READ_BUFFER_SIZE_IN_FILE = 8192;
   static const int WRITE_BUFFER_SIZE = 2048;
+  static const int WRITE_BUFFER_SIZE_IN_FILE = 8192;
   enum METHOD {
     GET = 0,
     POST,
@@ -91,7 +93,7 @@ private:
   HTTP_CODE parse_headers(char *text);
   HTTP_CODE parse_content(char *text);
   HTTP_CODE do_request();
-  char *get_line() { return m_read_buf + m_start_line; };
+  char *get_line() { return read_buf_ptr + m_start_line; };
   LINE_STATUS parse_line();
   bool add_response(const char *format, ...);
   bool add_content(const char *content);
@@ -111,11 +113,19 @@ public:
 private:
   int m_sockfd;
   sockaddr_in m_address;
+
   char m_read_buf[READ_BUFFER_SIZE];
+  char m_read_buf_in_file[READ_BUFFER_SIZE_IN_FILE];
+  char *read_buf_ptr;
+
   long m_read_idx;
   long m_checked_idx;
   int m_start_line;
+
   char m_write_buf[WRITE_BUFFER_SIZE];
+  char m_write_buf_in_file[WRITE_BUFFER_SIZE_IN_FILE];
+  char *write_buf_ptr;
+
   int m_write_idx;
   CHECK_STATE m_check_state;
   METHOD m_method;

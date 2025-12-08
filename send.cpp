@@ -63,13 +63,10 @@ int main() {
   std::ofstream tempflie("/tmp/http_request.txt");
 
   tempflie << http_request.str();
-  tempflie << http_request.str();
-  tempflie << http_request.str();
-  tempflie << http_request.str();
 
   tempflie.close();
 
-  std::string command = "cat /tmp/http_request.txt | nc localhost 9006";
+  std::string command = "cat /tmp/http_request.txt | nc  -w 200 localhost 9006";
 
   int result = system(command.c_str());
 

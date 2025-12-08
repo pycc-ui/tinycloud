@@ -29,7 +29,7 @@ Config::Config() {
   close_log = 0;
 
   // 并发模型,默认是proactor
-  actor_model = 0;
+  actor_model = 1;
 }
 
 void Config::parse_arg(int argc, char *argv[]) {
