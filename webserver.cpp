@@ -215,6 +215,7 @@ bool WebServer::dealclientdata() {
       LOG_ERROR("%s", "Internal server busy");
       return false;
     }
+    // 注册套接字和定时器
     timer(connfd, client_address);
   }
 

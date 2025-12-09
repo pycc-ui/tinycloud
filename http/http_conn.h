@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <list>
 #include <map>
 #include <netinet/in.h>
 #include <pthread.h>
@@ -28,13 +29,13 @@
 #include "../timer/lst_timer.h"
 
 using json = nlohmann::json;
+
 class http_conn {
 public:
   static const int FILENAME_LEN = 256; // 文件名最大长度
   static const int READ_BUFFER_SIZE = 2048;
   static const int READ_BUFFER_SIZE_IN_FILE = 8192;
-  static const int WRITE_BUFFER_SIZE = 2048;
-  static const int WRITE_BUFFER_SIZE_IN_FILE = 8192;
+  static const int WRITE_BUFFER_SIZE = 8192;
   enum METHOD {
     GET = 0,
     POST,
@@ -77,7 +78,8 @@ public:
   void init(int sockfd, const sockaddr_in &addr, char *, int, int, string user,
             string passwd, string sqlname);
   void close_conn(bool real_close = true);
-  void process();
+  bool process_write_phase();
+  void process_read_phase();
   bool read_once();
   bool write();
   sockaddr_in *get_address() { return &m_address; }
@@ -86,7 +88,8 @@ public:
   int improv;
 
 private:
-  void init();
+  void init_read();
+  void init_write();
   HTTP_CODE process_read();
   bool process_write(HTTP_CODE ret);
   HTTP_CODE parse_request_line(char *text);
@@ -118,18 +121,22 @@ private:
   char m_read_buf_in_file[READ_BUFFER_SIZE_IN_FILE];
   char *read_buf_ptr;
 
+  std::unique_ptr<json> m_read_message; // 报文信息存到json对象中
+  list<std::unique_ptr<json>> m_read_message_queue;
+
+  std::unique_ptr<json> m_write_message;
+  locker m_lock;
+  bool m_write_tasking;
+
   long m_read_idx;
   long m_checked_idx;
   int m_start_line;
 
   char m_write_buf[WRITE_BUFFER_SIZE];
-  char m_write_buf_in_file[WRITE_BUFFER_SIZE_IN_FILE];
-  char *write_buf_ptr;
 
   int m_write_idx;
   CHECK_STATE m_check_state;
   METHOD m_method;
-  char m_real_file[FILENAME_LEN];
   char exclusive_dir[FILENAME_LEN];
   char *m_url;
   char *m_version;
@@ -137,6 +144,7 @@ private:
   long m_content_length;
   bool m_linger;
   string m_response_content;
+
   struct iovec m_iv[2];
   int m_iv_count;
   char *m_string; // 存储请求头数据
@@ -144,7 +152,6 @@ private:
   int bytes_have_send;
   char *doc_root;
 
-  map<string, string> m_users;
   int m_TRIGMode;
   int m_close_log;
 

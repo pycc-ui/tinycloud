@@ -24,7 +24,6 @@ const char *error_500_title = "Internal Error";
 const char *error_500_form =
     "There was an unusual problem serving the request file.\n";
 
-locker m_lock;
 map<string, string> users;
 
 void http_conn::initmysql_result(connection_pool *connPool) {
@@ -130,16 +129,16 @@ void http_conn::init(int sockfd, const sockaddr_in &addr, char *root,
   strcpy(sql_user, user.c_str());
   strcpy(sql_passwd, passwd.c_str());
   strcpy(sql_name, sqlname.c_str());
+  read_buf_ptr = m_read_buf;
 
-  init();
+  init_read();
+  init_write();
 }
 
 // 初始化新接受的连接
 // check_state默认为分析请求行状态
-void http_conn::init() {
+void http_conn::init_read() {
   mysql = NULL;
-  bytes_to_send = 0;
-  bytes_have_send = 0;
   m_check_state = CHECK_STATE_REQUESTLINE;
   m_linger = false;
   m_method = GET;
@@ -150,17 +149,24 @@ void http_conn::init() {
   m_start_line = 0;
   m_checked_idx = 0;
   m_read_idx = 0;
-  m_write_idx = 0;
   m_state = 0;
   timer_flag = 0;
   improv = 0;
-  m_response_content = "";
-  read_buf_ptr = m_read_buf;
-  // 标记
+  m_read_message = std::make_unique<json>();
 
-  memset(m_read_buf, '\0', READ_BUFFER_SIZE);
+  int buf_size =
+      read_buf_ptr == m_read_buf ? READ_BUFFER_SIZE : READ_BUFFER_SIZE_IN_FILE;
+
+  memset(m_read_buf, '\0', buf_size);
+}
+
+void http_conn::init_write() {
+  m_response_content = "";
+  m_write_tasking = false;
+  m_write_idx = 0;
+  bytes_to_send = 0;
+  bytes_have_send = 0;
   memset(m_write_buf, '\0', WRITE_BUFFER_SIZE);
-  memset(m_real_file, '\0', FILENAME_LEN);
 }
 
 // 循环读取客户数据，直到无数据可读或对方关闭连接
@@ -309,6 +315,8 @@ http_conn::HTTP_CODE http_conn::parse_request_line(char *text) {
   if (!m_url || m_url[0] != '/')
     return BAD_REQUEST;
   // 转入解析请求头部
+  (*m_read_message)["url"] = m_url;
+
   m_check_state = CHECK_STATE_HEADER;
   return NO_REQUEST;
 }
@@ -328,7 +336,11 @@ http_conn::HTTP_CODE http_conn::parse_headers(char *text) {
     text += 11;
     text += strspn(text, " \t");
     if (strcasecmp(text, "keep-alive") == 0) {
+      (*m_read_message)["Connection"] = true;
       m_linger = true;
+    } else {
+      (*m_read_message)["Connection"] = false;
+      m_linger = false;
     }
   } else if (strncasecmp(text, "Content-length:", 15) == 0) {
     text += 15;
@@ -354,6 +366,7 @@ http_conn::HTTP_CODE http_conn::parse_content(char *text) {
     text[m_content_length] = '\0';
     // POST请求中最后为输入的用户名和密码
     m_string = text;
+    (*m_read_message)["client_content"] = string(m_string);
     return GET_REQUEST;
   }
   return NO_REQUEST;
@@ -406,14 +419,8 @@ http_conn::HTTP_CODE http_conn::process_read() {
 // cgi处理数据库
 http_conn::HTTP_CODE http_conn::do_request() {
 
-  strcpy(m_real_file, doc_root);
-  int len = strlen(doc_root);
-
-  string path = m_url;
-  string content = m_string;
   way_manager solve_request;
-  solve_request.do_way(path, content, mysql, m_response_content);
-
+  solve_request.do_way(mysql, m_read_message);
   return FILE_REQUEST;
 }
 
@@ -423,8 +430,6 @@ bool http_conn::write() {
   LOG_INFO("%s", m_write_buf);
   LOG_INFO("%s", m_response_content.c_str());
   if (bytes_to_send == 0) {
-    modfd(m_epollfd, m_sockfd, EPOLLIN, m_TRIGMode);
-    init();
     return true;
   }
 
@@ -455,18 +460,12 @@ bool http_conn::write() {
 
     if (bytes_to_send <= 0) {
       m_response_content.clear();
-      modfd(m_epollfd, m_sockfd, EPOLLIN, m_TRIGMode);
-
-      if (m_linger) {
-        init();
-        return true;
-      } else {
-        return false;
-      }
+      return true;
     }
   }
 }
 // 添加回复报文
+
 bool http_conn::add_response(const char *format, ...) {
   if (m_write_idx >= WRITE_BUFFER_SIZE)
     return false;
@@ -506,6 +505,7 @@ bool http_conn::add_blank_line() { return add_response("%s", "\r\n"); }
 bool http_conn::add_content(const char *content) {
   return add_response("%s", content);
 }
+
 bool http_conn::process_write(HTTP_CODE ret) {
   switch (ret) {
   case INTERNAL_ERROR: {
@@ -559,20 +559,62 @@ bool http_conn::process_write(HTTP_CODE ret) {
   bytes_to_send = m_write_idx;
   return true;
 }
-void http_conn::process() {
+
+void http_conn::process_read_phase() {
   // 处理已经读的报文
   HTTP_CODE read_ret = process_read();
+  (*m_read_message)["read_ret"] = static_cast<int>(read_ret);
   if (read_ret == NO_REQUEST) {
     // 没读完继续读
     modfd(m_epollfd, m_sockfd, EPOLLIN, m_TRIGMode);
     return;
   }
-  // 处理分片传输所需要缓冲区的关键地方,这个函数需要修改,标记一下
-  //  增加要写的报文
+  m_lock.lock();
+  if ((*m_read_message)["Connection"]) {
+    init_read();
+    modfd(m_epollfd, m_sockfd, EPOLLIN, m_TRIGMode);
+  }
+  m_read_message_queue.push_back(std::move(m_read_message));
+  if (!m_write_tasking) {
+    modfd(m_epollfd, m_sockfd, EPOLLOUT, m_TRIGMode);
+  }
+  m_lock.unlock();
+}
+
+bool http_conn::process_write_phase() {
+  m_lock.lock();
+  if (m_write_tasking) {
+    m_lock.unlock();
+    return true;
+  }
+  m_write_tasking = true;
+  if (m_read_message_queue.empty()) {
+    m_lock.unlock();
+    return true;
+  }
+  m_write_message = std::move(m_read_message_queue.front());
+  m_read_message_queue.pop_front();
+  m_lock.unlock();
+
+  HTTP_CODE read_ret =
+      static_cast<HTTP_CODE>((*m_write_message)["read_ret"].get<int>());
+
+  m_response_content = (*m_write_message)["server_content"];
   bool write_ret = process_write(read_ret);
   if (!write_ret) {
+    write();
     close_conn();
+    return false;
   }
-  // 通知写
-  modfd(m_epollfd, m_sockfd, EPOLLOUT, m_TRIGMode);
+
+  bool write_result = write();
+
+  m_lock.lock();
+  m_write_tasking = false;
+  if (!m_read_message_queue.empty()) {
+    modfd(m_epollfd, m_sockfd, EPOLLOUT, m_TRIGMode);
+  }
+  m_lock.unlock();
+
+  return write_result;
 }

@@ -41,32 +41,36 @@ std::string generateStoragePath(const std::string &file_id) {
   return "./root/" + dir1 + "/" + dir2 + "/" + clean_id + ".bin";
 }
 
-void login_way::request_stratege(std::string &url, std::string &content,
-                                 MYSQL *mysql, std::string &response_content) {
+void login_way::request_stratege(MYSQL *mysql,
+                                 std::unique_ptr<json> &message_json) {
   std::string user;
   std::string password;
-  json post_client = json::parse(content);
+  string client_content = (*message_json)["client_content"];
+  json post_client = json::parse(client_content);
   json response_json;
+  message_json->erase("client_content");
   user = post_client["user"];
   password = post_client["passwd"];
 
   if (users.find(user) != users.end() && users[user] == password) {
     response_json["status"] = "success";
-    response_content = response_json.dump();
   } else {
     response_json["status"] = "error";
-    response_content = response_json.dump();
+    response_json["message"] = "invalid username or password";
+    (*message_json)["server_content"] = response_json.dump(4);
+    return;
   }
 }
 static auto_register<login_way> login_auto_register;
 
-void register_way::request_stratege(std::string &url, std::string &content,
-                                    MYSQL *mysql,
-                                    std::string &response_content) {
+void register_way::request_stratege(MYSQL *mysql,
+                                    std::unique_ptr<json> &message_json) {
   std::regex pattern("^[a-zA-Z0-9]+$");
   std::string user;
   std::string password;
-  json post_client = json::parse(content);
+  string client_content = (*message_json)["client_content"];
+  json post_client = json::parse(client_content);
+  message_json->erase("client_content");
   json response_json;
   user = post_client["user"];
   password = post_client["passwd"];
@@ -77,7 +81,7 @@ void register_way::request_stratege(std::string &url, std::string &content,
     response_json["status"] = "error";
     response_json["message"] = "user or password too long or too short,only "
                                "letters and numbers are allowed.";
-    response_content = response_json.dump(4);
+    (*message_json)["server_content"] = response_json.dump(4);
     return;
   }
 
@@ -98,36 +102,36 @@ void register_way::request_stratege(std::string &url, std::string &content,
     if (res) {
       response_json["status"] = "error";
       response_json["message"] = "insertion error to sql";
-      response_content = response_json.dump(4);
+      (*message_json)["server_content"] = response_json.dump(4);
+      return;
     } else {
       response_json["status"] = "success";
-      response_content = response_json.dump(4);
+      (*message_json)["server_content"] = response_json.dump(4);
+      return;
     }
-
   } else {
     response_json["status"] = "error";
     response_json["message"] = "existing account";
-    response_content = response_json.dump(4);
+    (*message_json)["server_content"] = response_json.dump(4);
+    return;
   }
 }
 static auto_register<register_way> register_auto_register;
 
 // 文件操作相关策略实现
 
-void file_download_way::request_stratege(std::string &url, std::string &content,
-                                         MYSQL *mysql,
-                                         std::string &response_content) {
+void file_download_way::request_stratege(MYSQL *mysql,
+                                         std::unique_ptr<json> &message_json) {
   std::string user;
-  json post_client = json::parse(content);
-  user = post_client["user"];
 }
 static auto_register<file_download_way> file_download_auto_register;
 
-void file_upload_way::request_stratege(std::string &url, std::string &content,
-                                       MYSQL *mysql,
-                                       std::string &response_content) {
+void file_upload_way::request_stratege(MYSQL *mysql,
+                                       std::unique_ptr<json> &message_json) {
   // 文件上传逻辑
-  json post_client = json::parse(content);
+  string client_content = (*message_json)["client_content"];
+  json post_client = json::parse(client_content);
+  message_json->erase("client_content");
   json response_json;
   std::string username = post_client["username"];
   std::string file_size = post_client["file_size"];
@@ -146,7 +150,7 @@ void file_upload_way::request_stratege(std::string &url, std::string &content,
   if (res) {
     response_json["status"] = "error";
     response_json["message"] = "sql query error";
-    response_content = response_json.dump(4);
+    (*message_json)["server_content"] = response_json.dump(4);
     return;
   } else {
     MYSQL_RES *result = mysql_store_result(mysql);
@@ -174,7 +178,7 @@ void file_upload_way::request_stratege(std::string &url, std::string &content,
         m_lock.unlock();
         response_json["status"] = "error";
         response_json["message"] = "启动事务失败";
-        response_content = response_json.dump(4);
+        (*message_json)["server_content"] = response_json.dump(4);
         mysql_free_result(result);
         return;
       }
@@ -185,7 +189,7 @@ void file_upload_way::request_stratege(std::string &url, std::string &content,
         m_lock.unlock();
         response_json["status"] = "error";
         response_json["message"] = "SQL更新错误";
-        response_content = response_json.dump(4);
+        (*message_json)["server_content"] = response_json.dump(4);
         mysql_free_result(result);
         return;
       }
@@ -196,7 +200,7 @@ void file_upload_way::request_stratege(std::string &url, std::string &content,
         m_lock.unlock();
         response_json["status"] = "error";
         response_json["message"] = "SQL插入错误";
-        response_content = response_json.dump(4);
+        (*message_json)["server_content"] = response_json.dump(4);
         mysql_free_result(result);
         return;
       }
@@ -207,7 +211,7 @@ void file_upload_way::request_stratege(std::string &url, std::string &content,
         m_lock.unlock();
         response_json["status"] = "error";
         response_json["message"] = "提交事务失败";
-        response_content = response_json.dump(4);
+        (*message_json)["server_content"] = response_json.dump(4);
         mysql_free_result(result);
         return;
       }
@@ -215,7 +219,7 @@ void file_upload_way::request_stratege(std::string &url, std::string &content,
       response_json["status"] = "success";
       response_json["message"] = "file already exists, citation count "
                                  "increased, virtual path added";
-      response_content = response_json.dump(4);
+      (*message_json)["server_content"] = response_json.dump(4);
       return;
     }
     mysql_free_result(result);
@@ -240,7 +244,7 @@ void file_upload_way::request_stratege(std::string &url, std::string &content,
     m_lock.unlock();
     response_json["status"] = "error";
     response_json["message"] = "启动事务失败";
-    response_content = response_json.dump(4);
+    (*message_json)["server_content"] = response_json.dump(4);
     return;
   }
   res = mysql_query(mysql, insert_file_table_sql.str().c_str());
@@ -249,7 +253,7 @@ void file_upload_way::request_stratege(std::string &url, std::string &content,
     m_lock.unlock();
     response_json["status"] = "error";
     response_json["message"] = "sql插入错误";
-    response_content = response_json.dump(4);
+    (*message_json)["server_content"] = response_json.dump(4);
     return;
   }
   // 执行插入
@@ -259,7 +263,7 @@ void file_upload_way::request_stratege(std::string &url, std::string &content,
     m_lock.unlock();
     response_json["status"] = "error";
     response_json["message"] = "SQL插入错误";
-    response_content = response_json.dump(4);
+    (*message_json)["server_content"] = response_json.dump(4);
     return;
   }
   // 提交事务
@@ -269,7 +273,7 @@ void file_upload_way::request_stratege(std::string &url, std::string &content,
     m_lock.unlock();
     response_json["status"] = "error";
     response_json["message"] = "提交事务失败";
-    response_content = response_json.dump(4);
+    (*message_json)["server_content"] = response_json.dump(4);
     return;
   }
   m_lock.unlock();
@@ -283,7 +287,7 @@ void file_upload_way::request_stratege(std::string &url, std::string &content,
   if (!output_file.is_open()) {
     response_json["status"] = "error";
     response_json["message"] = "file creation failed";
-    response_content = response_json.dump(4);
+    (*message_json)["server_content"] = response_json.dump(4);
     return;
   }
   output_file.write(document_content.c_str(), document_content.size());
@@ -291,81 +295,57 @@ void file_upload_way::request_stratege(std::string &url, std::string &content,
 
   response_json["status"] = "success";
   response_json["message"] = "file uploaded successfully";
-  response_content = response_json.dump(4);
+  (*message_json)["server_content"] = response_json.dump(4);
   return;
 }
 static auto_register<file_upload_way> file_upload_auto_register;
 
-void file_delete_way::request_stratege(std::string &url, std::string &content,
-                                       MYSQL *mysql,
-                                       std::string &response_content) {
+void file_delete_way::request_stratege(MYSQL *mysql,
+                                       std::unique_ptr<json> &message_json) {
   std::string user;
-  json post_client = json::parse(content);
-  user = post_client["user"];
 }
 static auto_register<file_delete_way> file_delete_auto_register;
 
-void file_rename_way::request_stratege(std::string &url, std::string &content,
-                                       MYSQL *mysql,
-                                       std::string &response_content) {
+void file_rename_way::request_stratege(MYSQL *mysql,
+                                       std::unique_ptr<json> &message_json) {
   std::string user;
-  json post_client = json::parse(content);
-  user = post_client["user"];
 }
 static auto_register<file_rename_way> file_rename_auto_register;
 
-void file_move_way::request_stratege(std::string &url, std::string &content,
-                                     MYSQL *mysql,
-                                     std::string &response_content) {
+void file_move_way::request_stratege(MYSQL *mysql,
+                                     std::unique_ptr<json> &message_json) {
 
   std::string user;
-  json post_client = json::parse(content);
-  user = post_client["user"];
 }
 static auto_register<file_move_way> file_move_auto_register;
 
-void file_copy_way::request_stratege(std::string &url, std::string &content,
-                                     MYSQL *mysql,
-                                     std::string &response_content) {
+void file_copy_way::request_stratege(MYSQL *mysql,
+                                     std::unique_ptr<json> &message_json) {
   std::string user;
-  json post_client = json::parse(content);
-  user = post_client["user"];
 }
 static auto_register<file_copy_way> file_copy_auto_register;
 
 // 目录操作相关策略实现
-void directory_create_way::request_stratege(std::string &url,
-                                            std::string &content, MYSQL *mysql,
-                                            std::string &response_content) {
+void directory_create_way::request_stratege(
+    MYSQL *mysql, std::unique_ptr<json> &message_json) {
   std::string user;
-  json post_client = json::parse(content);
-  user = post_client["user"];
 }
 static auto_register<directory_create_way> directory_create_auto_register;
 
-void directory_delete_way::request_stratege(std::string &url,
-                                            std::string &content, MYSQL *mysql,
-                                            std::string &response_content) {
+void directory_delete_way::request_stratege(
+    MYSQL *mysql, std::unique_ptr<json> &message_json) {
   std::string user;
-  json post_client = json::parse(content);
-  user = post_client["user"];
 }
 static auto_register<directory_delete_way> directory_delete_auto_register;
 
-void directory_list_way::request_stratege(std::string &url,
-                                          std::string &content, MYSQL *mysql,
-                                          std::string &response_content) {
+void directory_list_way::request_stratege(MYSQL *mysql,
+                                          std::unique_ptr<json> &message_json) {
   std::string user;
-  json post_client = json::parse(content);
-  user = post_client["user"];
 }
 static auto_register<directory_list_way> directory_list_auto_register;
 
-void directory_rename_way::request_stratege(std::string &url,
-                                            std::string &content, MYSQL *mysql,
-                                            std::string &response_content) {
+void directory_rename_way::request_stratege(
+    MYSQL *mysql, std::unique_ptr<json> &message_json) {
   std::string user;
-  json post_client = json::parse(content);
-  user = post_client["user"];
 }
 static auto_register<directory_rename_way> directory_rename_auto_register;

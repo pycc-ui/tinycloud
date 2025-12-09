@@ -112,12 +112,13 @@ template <typename T> void threadpool<T>::run() {
         if (request->read_once()) {
           request->improv = 1;
           connectionRAII mysqlcon(&request->mysql, m_connPool);
-          request->process();
+          request->process_read_phase();
         } else {
           request->improv = 1;
           request->timer_flag = 1;
         }
       } else {
+        request->process_write_phase();
         if (request->write()) {
           request->improv = 1;
         } else {
@@ -129,7 +130,7 @@ template <typename T> void threadpool<T>::run() {
       // Proactor模型
       // 读写在主线程
       connectionRAII mysqlcon(&request->mysql, m_connPool);
-      request->process();
+      // request->process();
     }
   }
 }
