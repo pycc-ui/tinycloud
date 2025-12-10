@@ -45,7 +45,7 @@ int main() {
 
   std::cout << "sha256_num:";
   std::cout << sha256_num << std::endl;
-  content["document_content"] = base64_encode(file_content);
+  content["document_content"] = file_content;
   content["sha256_num"] = sha256_num.c_str();
   content["virtual_file_path"] = "/test.txt";
   content["file_size"] = std::to_string(size);
@@ -57,11 +57,16 @@ int main() {
   http_request << "POST /file/upload HTTP/1.1\r\n"
                << "Host: localhost\r\n"
                << "Content-Length: " << content_string.size() << "\r\n"
-               << "Connection: close\r\n\r\n"
-               << content_string;
+               << "Connection: keep-alive\r\n\r\n"
+               << content_string << " ";
 
   std::ofstream tempflie("/tmp/http_request.txt");
 
+  http_request << "POST /file/upload HTTP/1.1\r\n"
+               << "Host: localhost\r\n"
+               << "Content-Length: " << content_string.size() << "\r\n"
+               << "Connection: close\r\n\r\n"
+               << content_string << " ";
   tempflie << http_request.str();
 
   tempflie.close();

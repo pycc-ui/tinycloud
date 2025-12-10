@@ -130,3 +130,54 @@ Connection:close
 2025-12-09 22:31:44.377191 [info]:timer tick
 2025-12-09 22:31:49.377536 [info]:timer tick
 2025-12-09 22:31:54.377709 [info]:timer tick
+2025-12-09 23:17:42.437083 [info]:adjust timer once
+2025-12-09 23:17:42.437219 [info]:POST /file/upload HTTP/1.1
+2025-12-09 23:17:42.437262 [info]:Host: localhost
+2025-12-09 23:17:42.437271 [info]:Content-Length: 867
+2025-12-09 23:17:42.437277 [info]:Connection: close
+2025-12-09 23:17:42.437285 [info]:
+2025-12-09 23:17:42.437291 [info]:{"document_content":"vM4eI83gQ+tiapJT1fY5lAvD8DHT5+j2OUEZ8YrWBs71vDZXBr2S02LwpDElPRz0QdmtOiJ8xv68mDMMLz9JjdE0r1N6ZxmSlJ9fh+fyIFWM2twtJacyreCgnoY57wyi3n/+xwnk+1czw2kZUGWP3opqn/+t1tImmycVXq47kDFJUy2sAZIIQG7SJQSTweAIwVoaDKd2GMcfVm5FGPO5OUCA3dE+2WCXVcon/AbLKbFSur53lKD2nEnxsqsa9jGsNS5WJ6+xhHp9hlQWWQqvKiGcdel78nX9Ee27iob4xx/k4ogK9Abc80L62NQyMddTongFcUtmHJhyyoGI8oRMP69xdzBqwgJaq1zH4vWLAbdQI0MAZ8U2PvQbIgbsW9roUmQfnljEnSTKlDDwHn8/ZfXQhyu+SsTwVyT06eNid8gP4c2pMxnz6a+OrVImiziU8GgNBjKvyPPuLx9XhmOOu6YmtwMnxEC/8qwFXaY7is6wcACCxH0kRloz7C652zMbhiv+vWKswG0UA+J2Y2lzxqHFesKdk1QBgnW5ds5u8TN8YG5e4rg8Trz1rxm7SfZzAC4xVvwVMHShGmalOxBwWFMm57ElUsJJ6dH2d2CELX2v53bD+qaGrtvGTK2LzBuN67MhDLzvg6VU/VwIxGrahYqIbb+eeUSdvjN0KBSnh+o=","file_size":"512","passwd":"11","sha256_num":"285eaa5a4bd914311b7d623551706578c42f064d670cd2d5dae714b89ad50d1a","username":"11","virtual_file_path":"/test.txt"}
+2025-12-09 23:17:42.441244 [info]:adjust timer once
+2025-12-09 23:17:42.441355 [info]:HTTP/1.1 200 OK
+Content-Length:111
+Connection:close
+
+
+2025-12-09 23:17:42.441377 [info]:{
+    "message": "file already exists, citation count increased, virtual path added",
+    "status": "success"
+}
+2025-12-09 23:17:59.395373 [info]:adjust timer once
+2025-12-09 23:17:59.395480 [info]:POST /file/upload HTTP/1.1
+2025-12-09 23:17:59.395509 [info]:Host: localhost
+2025-12-09 23:17:59.395513 [info]:Content-Length: 867
+2025-12-09 23:17:59.395517 [info]:Connection: close
+2025-12-09 23:17:59.395522 [info]:
+2025-12-09 23:17:59.395525 [info]:{"document_content":"vM4eI83gQ+tiapJT1fY5lAvD8DHT5+j2OUEZ8YrWBs71vDZXBr2S02LwpDElPRz0QdmtOiJ8xv68mDMMLz9JjdE0r1N6ZxmSlJ9fh+fyIFWM2twtJacyreCgnoY57wyi3n/+xwnk+1czw2kZUGWP3opqn/+t1tImmycVXq47kDFJUy2sAZIIQG7SJQSTweAIwVoaDKd2GMcfVm5FGPO5OUCA3dE+2WCXVcon/AbLKbFSur53lKD2nEnxsqsa9jGsNS5WJ6+xhHp9hlQWWQqvKiGcdel78nX9Ee27iob4xx/k4ogK9Abc80L62NQyMddTongFcUtmHJhyyoGI8oRMP69xdzBqwgJaq1zH4vWLAbdQI0MAZ8U2PvQbIgbsW9roUmQfnljEnSTKlDDwHn8/ZfXQhyu+SsTwVyT06eNid8gP4c2pMxnz6a+OrVImiziU8GgNBjKvyPPuLx9XhmOOu6YmtwMnxEC/8qwFXaY7is6wcACCxH0kRloz7C652zMbhiv+vWKswG0UA+J2Y2lzxqHFesKdk1QBgnW5ds5u8TN8YG5e4rg8Trz1rxm7SfZzAC4xVvwVMHShGmalOxBwWFMm57ElUsJJ6dH2d2CELX2v53bD+qaGrtvGTK2LzBuN67MhDLzvg6VU/VwIxGrahYqIbb+eeUSdvjN0KBSnh+o=","file_size":"512","passwd":"11","sha256_num":"285eaa5a4bd914311b7d623551706578c42f064d670cd2d5dae714b89ad50d1a","username":"11","virtual_file_path":"/test.txt"}
+2025-12-09 23:17:59.399129 [info]:adjust timer once
+2025-12-09 23:17:59.399242 [info]:HTTP/1.1 200 OK
+Content-Length:111
+Connection:close
+
+
+2025-12-09 23:17:59.399261 [info]:{
+    "message": "file already exists, citation count increased, virtual path added",
+    "status": "success"
+}
+2025-12-09 23:18:37.886896 [info]:adjust timer once
+2025-12-09 23:18:37.886980 [info]:POST /file/upload HTTP/1.1
+2025-12-09 23:18:37.887023 [info]:Host: localhost
+2025-12-09 23:18:37.887028 [info]:Content-Length: 867
+2025-12-09 23:18:37.887032 [info]:Connection: close
+2025-12-09 23:18:37.887037 [info]:
+2025-12-09 23:18:37.887040 [info]:{"document_content":"vM4eI83gQ+tiapJT1fY5lAvD8DHT5+j2OUEZ8YrWBs71vDZXBr2S02LwpDElPRz0QdmtOiJ8xv68mDMMLz9JjdE0r1N6ZxmSlJ9fh+fyIFWM2twtJacyreCgnoY57wyi3n/+xwnk+1czw2kZUGWP3opqn/+t1tImmycVXq47kDFJUy2sAZIIQG7SJQSTweAIwVoaDKd2GMcfVm5FGPO5OUCA3dE+2WCXVcon/AbLKbFSur53lKD2nEnxsqsa9jGsNS5WJ6+xhHp9hlQWWQqvKiGcdel78nX9Ee27iob4xx/k4ogK9Abc80L62NQyMddTongFcUtmHJhyyoGI8oRMP69xdzBqwgJaq1zH4vWLAbdQI0MAZ8U2PvQbIgbsW9roUmQfnljEnSTKlDDwHn8/ZfXQhyu+SsTwVyT06eNid8gP4c2pMxnz6a+OrVImiziU8GgNBjKvyPPuLx9XhmOOu6YmtwMnxEC/8qwFXaY7is6wcACCxH0kRloz7C652zMbhiv+vWKswG0UA+J2Y2lzxqHFesKdk1QBgnW5ds5u8TN8YG5e4rg8Trz1rxm7SfZzAC4xVvwVMHShGmalOxBwWFMm57ElUsJJ6dH2d2CELX2v53bD+qaGrtvGTK2LzBuN67MhDLzvg6VU/VwIxGrahYqIbb+eeUSdvjN0KBSnh+o=","file_size":"512","passwd":"11","sha256_num":"285eaa5a4bd914311b7d623551706578c42f064d670cd2d5dae714b89ad50d1a","username":"11","virtual_file_path":"/test.txt"}
+2025-12-09 23:18:37.889854 [info]:adjust timer once
+2025-12-09 23:19:07.816932 [info]:HTTP/1.1 200 OK
+Content-Length:111
+Connection:close
+
+
+2025-12-09 23:19:07.817000 [info]:{
+    "message": "file already exists, citation count increased, virtual path added",
+    "status": "success"
+}

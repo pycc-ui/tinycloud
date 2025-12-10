@@ -118,8 +118,7 @@ template <typename T> void threadpool<T>::run() {
           request->timer_flag = 1;
         }
       } else {
-        request->process_write_phase();
-        if (request->write()) {
+        if (request->process_write_phase()) {
           request->improv = 1;
         } else {
           request->improv = 1;

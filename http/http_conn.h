@@ -32,9 +32,7 @@ using json = nlohmann::json;
 
 class http_conn {
 public:
-  static const int FILENAME_LEN = 256; // 文件名最大长度
-  static const int READ_BUFFER_SIZE = 2048;
-  static const int READ_BUFFER_SIZE_IN_FILE = 8192;
+  static const int READ_BUFFER_SIZE = 8192;
   static const int WRITE_BUFFER_SIZE = 8192;
   enum METHOD {
     GET = 0,
@@ -92,11 +90,13 @@ private:
   void init_write();
   HTTP_CODE process_read();
   bool process_write(HTTP_CODE ret);
+
+  void cleanup_parsed_buffer();
   HTTP_CODE parse_request_line(char *text);
   HTTP_CODE parse_headers(char *text);
   HTTP_CODE parse_content(char *text);
   HTTP_CODE do_request();
-  char *get_line() { return read_buf_ptr + m_start_line; };
+  char *get_line() { return m_read_buf + m_start_line; };
   LINE_STATUS parse_line();
   bool add_response(const char *format, ...);
   bool add_content(const char *content);
@@ -118,8 +118,6 @@ private:
   sockaddr_in m_address;
 
   char m_read_buf[READ_BUFFER_SIZE];
-  char m_read_buf_in_file[READ_BUFFER_SIZE_IN_FILE];
-  char *read_buf_ptr;
 
   std::unique_ptr<json> m_read_message; // 报文信息存到json对象中
   list<std::unique_ptr<json>> m_read_message_queue;
@@ -137,7 +135,6 @@ private:
   int m_write_idx;
   CHECK_STATE m_check_state;
   METHOD m_method;
-  char exclusive_dir[FILENAME_LEN];
   char *m_url;
   char *m_version;
   char *m_host;

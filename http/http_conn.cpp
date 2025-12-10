@@ -129,7 +129,6 @@ void http_conn::init(int sockfd, const sockaddr_in &addr, char *root,
   strcpy(sql_user, user.c_str());
   strcpy(sql_passwd, passwd.c_str());
   strcpy(sql_name, sqlname.c_str());
-  read_buf_ptr = m_read_buf;
 
   init_read();
   init_write();
@@ -153,11 +152,7 @@ void http_conn::init_read() {
   timer_flag = 0;
   improv = 0;
   m_read_message = std::make_unique<json>();
-
-  int buf_size =
-      read_buf_ptr == m_read_buf ? READ_BUFFER_SIZE : READ_BUFFER_SIZE_IN_FILE;
-
-  memset(m_read_buf, '\0', buf_size);
+  memset(m_read_buf, '\0', READ_BUFFER_SIZE);
 }
 
 void http_conn::init_write() {
@@ -173,9 +168,8 @@ void http_conn::init_write() {
 // 非阻塞ET工作模式下，需要一次性将数据读完
 // 读取所有数据,m_read_idx作为读到该位置的标志
 bool http_conn::read_once() {
-  int buf_size =
-      read_buf_ptr == m_read_buf ? READ_BUFFER_SIZE : READ_BUFFER_SIZE_IN_FILE;
-  if (m_read_idx >= buf_size) {
+
+  if (m_read_idx >= READ_BUFFER_SIZE) {
     return false;
   }
 
@@ -184,8 +178,8 @@ bool http_conn::read_once() {
   // LT读取数据
   if (0 == m_TRIGMode) {
 
-    bytes_read =
-        recv(m_sockfd, read_buf_ptr + m_read_idx, buf_size - m_read_idx, 0);
+    bytes_read = recv(m_sockfd, m_read_buf + m_read_idx,
+                      READ_BUFFER_SIZE - m_read_idx, 0);
     m_read_idx += bytes_read;
 
     if (bytes_read <= 0) {
@@ -231,20 +225,20 @@ LINE_OPEN，读取的行不完整
 http_conn::LINE_STATUS http_conn::parse_line() {
   char temp;
   for (; m_checked_idx < m_read_idx; ++m_checked_idx) {
-    temp = read_buf_ptr[m_checked_idx];
+    temp = m_read_buf[m_checked_idx];
     if (temp == '\r') {
       if ((m_checked_idx + 1) == m_read_idx)
         return LINE_OPEN;
-      else if (read_buf_ptr[m_checked_idx + 1] == '\n') {
-        read_buf_ptr[m_checked_idx++] = '\0';
-        read_buf_ptr[m_checked_idx++] = '\0';
+      else if (m_read_buf[m_checked_idx + 1] == '\n') {
+        m_read_buf[m_checked_idx++] = '\0';
+        m_read_buf[m_checked_idx++] = '\0';
         return LINE_OK;
       }
       return LINE_BAD;
     } else if (temp == '\n') {
-      if (m_checked_idx > 1 && read_buf_ptr[m_checked_idx - 1] == '\r') {
-        read_buf_ptr[m_checked_idx - 1] = '\0';
-        read_buf_ptr[m_checked_idx++] = '\0';
+      if (m_checked_idx > 1 && m_read_buf[m_checked_idx - 1] == '\r') {
+        m_read_buf[m_checked_idx - 1] = '\0';
+        m_read_buf[m_checked_idx++] = '\0';
         return LINE_OK;
       }
       return LINE_BAD;
@@ -271,6 +265,7 @@ INTERNAL_ERROR
 
 服务器内部错误，该结果在主状态机逻辑switch的default下，一般不会触发
 */
+
 http_conn::HTTP_CODE http_conn::parse_request_line(char *text) {
   // 查找\t或空格开头的指针
   // 请求行写入日志
@@ -364,14 +359,36 @@ http_conn::HTTP_CODE http_conn::parse_content(char *text) {
   // 消息体前有一个/r/n被处理
   if (m_read_idx >= (m_content_length + m_checked_idx)) {
     text[m_content_length] = '\0';
-    // POST请求中最后为输入的用户名和密码
     m_string = text;
+    m_checked_idx = m_checked_idx + m_content_length + 1;
     (*m_read_message)["client_content"] = string(m_string);
     return GET_REQUEST;
   }
   return NO_REQUEST;
 }
 
+void http_conn::cleanup_parsed_buffer() {
+  if (m_checked_idx > 0) {
+    // 将未处理的数据移动到缓冲区开头
+    int remaining = m_read_idx - m_checked_idx;
+    if (remaining >= 0) {
+      memmove(m_read_buf, m_read_buf + m_checked_idx, remaining);
+      memset(m_read_buf + remaining, '\0', READ_BUFFER_SIZE - remaining);
+    }
+    if (strlen(m_read_buf) == 0) {
+      (*m_read_message)["read_fin"] = true;
+    } else {
+      (*m_read_message)["read_fin"] = false;
+    }
+    m_read_idx = remaining;
+    m_checked_idx = 0;
+    m_start_line = 0;
+
+    // 重置状态机，准备解析下一个请求
+    m_check_state = CHECK_STATE_REQUESTLINE;
+    m_content_length = 0;
+  }
+}
 http_conn::HTTP_CODE http_conn::process_read() {
   LINE_STATUS line_status = LINE_OK;
   HTTP_CODE ret = NO_REQUEST;
@@ -562,19 +579,31 @@ bool http_conn::process_write(HTTP_CODE ret) {
 
 void http_conn::process_read_phase() {
   // 处理已经读的报文
-  HTTP_CODE read_ret = process_read();
-  (*m_read_message)["read_ret"] = static_cast<int>(read_ret);
-  if (read_ret == NO_REQUEST) {
-    // 没读完继续读
-    modfd(m_epollfd, m_sockfd, EPOLLIN, m_TRIGMode);
-    return;
-  }
-  m_lock.lock();
-  if ((*m_read_message)["Connection"]) {
+  bool read_fin;
+  bool Connection;
+  do {
+    HTTP_CODE read_ret = process_read();
+    cleanup_parsed_buffer();
+    (*m_read_message)["read_ret"] = static_cast<int>(read_ret);
+    if (read_ret == NO_REQUEST) {
+      // 没读完继续读
+      modfd(m_epollfd, m_sockfd, EPOLLIN, m_TRIGMode);
+      return;
+    }
+    read_fin = (*m_read_message)["read_fin"];
+    Connection = (*m_read_message)["Connection"];
+    m_lock.lock();
+    m_read_message_queue.push_back(std::move(m_read_message));
+    m_lock.unlock();
+    m_read_message = std::make_unique<json>();
+  } while (!read_fin);
+
+  if (Connection) {
     init_read();
     modfd(m_epollfd, m_sockfd, EPOLLIN, m_TRIGMode);
   }
-  m_read_message_queue.push_back(std::move(m_read_message));
+
+  m_lock.lock();
   if (!m_write_tasking) {
     modfd(m_epollfd, m_sockfd, EPOLLOUT, m_TRIGMode);
   }
@@ -612,7 +641,11 @@ bool http_conn::process_write_phase() {
   m_lock.lock();
   m_write_tasking = false;
   if (!m_read_message_queue.empty()) {
+    init_write();
     modfd(m_epollfd, m_sockfd, EPOLLOUT, m_TRIGMode);
+  } else if (!(*m_write_message)["Connection"]) {
+    m_lock.unlock();
+    return false;
   }
   m_lock.unlock();
 
