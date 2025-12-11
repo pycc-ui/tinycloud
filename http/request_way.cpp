@@ -1,5 +1,7 @@
 #include "request_way.h"
+#include "../base64/base64.h"
 #include "../nlohmann/json.hpp"
+
 #include <filesystem>
 #include <fstream>
 #include <map>
@@ -290,6 +292,7 @@ void file_upload_way::request_stratege(MYSQL *mysql,
     (*message_json)["server_content"] = response_json.dump(4);
     return;
   }
+  document_content = base64_decode(document_content);
   output_file.write(document_content.c_str(), document_content.size());
   output_file.close();
 

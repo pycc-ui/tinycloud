@@ -1,4 +1,5 @@
 #include "./nlohmann/json.hpp"
+#include "base64/base64.h"
 #include <fstream>
 #include <iostream>
 #include <openssl/bio.h>
@@ -9,23 +10,6 @@
 
 using json = nlohmann::json;
 std::string calculateFileSHA256(const std::string &filepath);
-
-std::string base64_encode(const std::string &input) {
-  BIO *bmem = BIO_new(BIO_s_mem());
-  BIO *b64 = BIO_new(BIO_f_base64());
-  b64 = BIO_push(b64, bmem);
-  BIO_set_flags(b64, BIO_FLAGS_BASE64_NO_NL);
-  BIO_write(b64, input.data(), input.length());
-  BIO_flush(b64);
-
-  BUF_MEM *bptr;
-  BIO_get_mem_ptr(b64, &bptr);
-
-  std::string result(bptr->data, bptr->length);
-
-  BIO_free_all(b64);
-  return result;
-}
 
 int main() {
   json content;
@@ -42,6 +26,7 @@ int main() {
 
   std::string file_content(size, ' ');
   file.read(&file_content[0], size);
+  file_content = base64_encode(file_content);
 
   std::cout << "sha256_num:";
   std::cout << sha256_num << std::endl;
