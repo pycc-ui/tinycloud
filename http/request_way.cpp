@@ -4,7 +4,9 @@
 
 #include <filesystem>
 #include <fstream>
+#include <ios>
 #include <map>
+#include <mysql/mysql.h>
 #include <openssl/sha.h>
 #include <regex>
 #include <sstream>
@@ -124,7 +126,75 @@ static auto_register<register_way> register_auto_register;
 
 void file_download_way::request_stratege(MYSQL *mysql,
                                          std::unique_ptr<json> &message_json) {
-  std::string user;
+  string client_content = (*message_json)["client_content"];
+  json post_client = json::parse(client_content);
+  message_json->erase("client_content");
+  json response_json;
+
+  bool downloading = post_client["downloading"];
+  if (downloading) {
+    string actual_file_path = post_client["actual_file_path"];
+    string username = post_client["username"];
+    int block_size = atoi(std::string(post_client["block_size"]).c_str());
+    int block_begin = atoi(std::string(post_client["block_begin"]).c_str());
+    string document_content;
+    std::ifstream input_file(actual_file_path, std::ios::binary);
+    if (!input_file.is_open()) {
+      response_json["status"] = "error";
+      response_json["message"] = "file open failed";
+      (*message_json)["server_content"] = response_json.dump(4);
+      return;
+    }
+    input_file.seekg(block_begin, ios_base::beg);
+    document_content.resize(block_size);
+    input_file.read(document_content.data(), block_size);
+    document_content = base64_encode(document_content);
+    input_file.close();
+
+    response_json["status"] = "success";
+    response_json["message"] = "file block downloading";
+    response_json["document_content"] = document_content;
+    (*message_json)["server_content"] = response_json.dump(4);
+
+    return;
+  } else {
+    std::string username = post_client["username"];
+    std::string virtual_file_path = post_client["virtual_file_path"];
+    string actual_file_path;
+    std::stringstream select_file_table_sql;
+
+    select_file_table_sql
+        << "select actual_file_path from file_table where file_id = (";
+    select_file_table_sql << "select file_id from own_table where  username= '"
+                          << username << "' and virtual_file_path = '"
+                          << virtual_file_path << "');";
+    m_lock.lock();
+    int res = mysql_query(mysql, select_file_table_sql.str().c_str());
+    m_lock.unlock();
+    if (res) {
+      response_json["status"] = "error";
+      response_json["message"] = "sql query error";
+      (*message_json)["server_content"] = response_json.dump(4);
+      return;
+    } else {
+      MYSQL_RES *result = mysql_store_result(mysql);
+      if (result->row_count > 0) {
+        MYSQL_ROW row = mysql_fetch_row(result);
+        actual_file_path = row[0];
+        mysql_free_result(result);
+      } else {
+        response_json["status"] = "error";
+        response_json["message"] = "sql query error";
+        (*message_json)["server_content"] = response_json.dump(4);
+        return;
+      }
+      response_json["status"] = "success";
+      response_json["message"] = "file download begin";
+      response_json["actual_file_path"] = actual_file_path;
+      (*message_json)["server_content"] = response_json.dump(4);
+      return;
+    }
+  }
 }
 static auto_register<file_download_way> file_download_auto_register;
 
@@ -135,171 +205,187 @@ void file_upload_way::request_stratege(MYSQL *mysql,
   json post_client = json::parse(client_content);
   message_json->erase("client_content");
   json response_json;
-  std::string username = post_client["username"];
-  std::string file_size = post_client["file_size"];
-  std::string virtual_file_path = post_client["virtual_file_path"];
-  std::string document_content = post_client["document_content"];
-  std::string actual_file_path;
-  std::string sha256_num = post_client["sha256_num"];
-  std::string file_id;
-  std::stringstream select_file_table_sql;
-  select_file_table_sql
-      << "select file_id,sha256_num from file_table where sha256_num = '"
-      << sha256_num << "'";
-  m_lock.lock();
-  int res = mysql_query(mysql, select_file_table_sql.str().c_str());
-  m_lock.unlock();
-  if (res) {
-    response_json["status"] = "error";
-    response_json["message"] = "sql query error";
-    (*message_json)["server_content"] = response_json.dump(4);
-    return;
-  } else {
-    MYSQL_RES *result = mysql_store_result(mysql);
 
-    file_id =
-        result->row_count > 0 ? mysql_fetch_row(result)[0] : generateUUID();
+  bool appanding = post_client["appanding"];
 
-    if (result->row_count > 0) {
-      // 文件存在,增加引用次数,并向联系表增加一个记录
-      std::stringstream update_file_table_sql;
-      std::stringstream insert_own_table_sql;
-      update_file_table_sql
-          << "update file_table set citation_count =citation_count  + 1 where "
-             "sha256_num = '"
-          << sha256_num << "'";
-      insert_own_table_sql
-          << "insert into own_table(file_id, virtual_file_path, "
-             "username) values('"
-          << file_id << "', '" << virtual_file_path << "', '" << username
-          << "')";
-      m_lock.lock();
-      // 开始事务
-      res = mysql_query(mysql, "START TRANSACTION");
-      if (res) {
-        m_lock.unlock();
-        response_json["status"] = "error";
-        response_json["message"] = "启动事务失败";
-        (*message_json)["server_content"] = response_json.dump(4);
-        mysql_free_result(result);
-        return;
-      }
-      // 执行更新
-      res = mysql_query(mysql, update_file_table_sql.str().c_str());
-      if (res) {
-        mysql_query(mysql, "ROLLBACK");
-        m_lock.unlock();
-        response_json["status"] = "error";
-        response_json["message"] = "SQL更新错误";
-        (*message_json)["server_content"] = response_json.dump(4);
-        mysql_free_result(result);
-        return;
-      }
-      // 执行插入
-      res = mysql_query(mysql, insert_own_table_sql.str().c_str());
-      if (res) {
-        mysql_query(mysql, "ROLLBACK");
-        m_lock.unlock();
-        response_json["status"] = "error";
-        response_json["message"] = "SQL插入错误";
-        (*message_json)["server_content"] = response_json.dump(4);
-        mysql_free_result(result);
-        return;
-      }
-      // 提交事务
-      res = mysql_query(mysql, "COMMIT");
-      if (res) {
-        mysql_query(mysql, "ROLLBACK");
-        m_lock.unlock();
-        response_json["status"] = "error";
-        response_json["message"] = "提交事务失败";
-        (*message_json)["server_content"] = response_json.dump(4);
-        mysql_free_result(result);
-        return;
-      }
-      m_lock.unlock();
-      response_json["status"] = "success";
-      response_json["message"] = "file already exists, citation count "
-                                 "increased, virtual path added";
+  if (appanding) {
+    std::string actual_file_path = post_client["actual_file_path"];
+    std::string document_content = post_client["document_content"];
+    // 目录存在时不会报错
+
+    std::ofstream output_file(actual_file_path, std::ios::app);
+    if (!output_file.is_open()) {
+      response_json["status"] = "error";
+      response_json["message"] = "file open failed";
       (*message_json)["server_content"] = response_json.dump(4);
       return;
     }
-    mysql_free_result(result);
-  }
-  // 文件不存在,保存文件,并向文件表和联系表增加记录
-  actual_file_path = generateStoragePath(file_id);
-  std::stringstream insert_file_table_sql;
-  std::stringstream insert_own_table_sql;
-  insert_file_table_sql
-      << "insert into file_table(file_id, file_size,actual_file_path, "
-         "citation_count,sha256_num) "
-      << "values('" << file_id << "', '" << file_size << "', '"
-      << actual_file_path << "', 1, '" << sha256_num << "')";
-  insert_own_table_sql << "insert into own_table(file_id, virtual_file_path, "
-                          "username) values('"
-                       << file_id << "', '" << virtual_file_path << "', '"
-                       << username << "')";
-  m_lock.lock();
-  // 开始事务
-  res = mysql_query(mysql, "START TRANSACTION");
-  if (res) {
-    m_lock.unlock();
-    response_json["status"] = "error";
-    response_json["message"] = "启动事务失败";
-    (*message_json)["server_content"] = response_json.dump(4);
-    return;
-  }
-  res = mysql_query(mysql, insert_file_table_sql.str().c_str());
-  if (res) {
-    mysql_query(mysql, "ROLLBACK");
-    m_lock.unlock();
-    response_json["status"] = "error";
-    response_json["message"] = "sql插入错误";
-    (*message_json)["server_content"] = response_json.dump(4);
-    return;
-  }
-  // 执行插入
-  res = mysql_query(mysql, insert_own_table_sql.str().c_str());
-  if (res) {
-    mysql_query(mysql, "ROLLBACK");
-    m_lock.unlock();
-    response_json["status"] = "error";
-    response_json["message"] = "SQL插入错误";
-    (*message_json)["server_content"] = response_json.dump(4);
-    return;
-  }
-  // 提交事务
-  res = mysql_query(mysql, "COMMIT");
-  if (res) {
-    mysql_query(mysql, "ROLLBACK");
-    m_lock.unlock();
-    response_json["status"] = "error";
-    response_json["message"] = "提交事务失败";
-    (*message_json)["server_content"] = response_json.dump(4);
-    return;
-  }
-  m_lock.unlock();
 
-  fs::path file_path;
-  file_path = actual_file_path;
-  // 目录存在时不会报错
-  fs::create_directories(file_path.parent_path());
+    document_content = base64_decode(document_content);
+    output_file.write(document_content.c_str(), document_content.size());
+    output_file.close();
 
-  std::ofstream output_file(actual_file_path, std::ios::binary);
-  if (!output_file.is_open()) {
-    response_json["status"] = "error";
-    response_json["message"] = "file creation failed";
+    response_json["status"] = "success";
+    response_json["message"] = "file block uploaded successfully";
+    (*message_json)["server_content"] = response_json.dump(4);
+    return;
+
+  } else {
+    std::string username = post_client["username"];
+    std::string file_size = post_client["file_size"];
+    std::string virtual_file_path = post_client["virtual_file_path"];
+    std::string document_content = post_client["document_content"];
+    std::string actual_file_path;
+    std::string sha256_num = post_client["sha256_num"];
+    std::string file_id;
+
+    std::stringstream select_file_table_sql;
+    select_file_table_sql
+        << "select file_id,sha256_num from file_table where sha256_num = '"
+        << sha256_num << "';";
+    m_lock.lock();
+    int res = mysql_query(mysql, select_file_table_sql.str().c_str());
+    m_lock.unlock();
+    if (res) {
+      response_json["status"] = "error";
+      response_json["message"] = "sql query error";
+      (*message_json)["server_content"] = response_json.dump(4);
+      return;
+    } else {
+      MYSQL_RES *result = mysql_store_result(mysql);
+
+      file_id =
+          result->row_count > 0 ? mysql_fetch_row(result)[0] : generateUUID();
+
+      if (result->row_count > 0) {
+        // 文件存在,增加引用次数,并向联系表增加一个记录
+        std::stringstream update_file_table_sql;
+        std::stringstream insert_own_table_sql;
+        update_file_table_sql << "update file_table set citation_count "
+                                 "=citation_count  + 1 where "
+                                 "sha256_num = '"
+                              << sha256_num << "';";
+        insert_own_table_sql
+            << "insert into own_table(file_id, virtual_file_path, "
+               "username) values('"
+            << file_id << "', '" << virtual_file_path << "', '" << username
+            << "');";
+        m_lock.lock();
+        // 开始事务
+        res = mysql_query(mysql, "START TRANSACTION");
+        if (res) {
+          m_lock.unlock();
+          response_json["status"] = "error";
+          response_json["message"] = "启动事务失败";
+          (*message_json)["server_content"] = response_json.dump(4);
+          mysql_free_result(result);
+          return;
+        }
+        // 执行更新
+        res = mysql_query(mysql, update_file_table_sql.str().c_str());
+        if (res) {
+          mysql_query(mysql, "ROLLBACK");
+          m_lock.unlock();
+          response_json["status"] = "error";
+          response_json["message"] = "SQL更新错误";
+          (*message_json)["server_content"] = response_json.dump(4);
+          mysql_free_result(result);
+          return;
+        }
+        // 执行插入
+        res = mysql_query(mysql, insert_own_table_sql.str().c_str());
+        if (res) {
+          mysql_query(mysql, "ROLLBACK");
+          m_lock.unlock();
+          response_json["status"] = "error";
+          response_json["message"] = "SQL插入错误";
+          (*message_json)["server_content"] = response_json.dump(4);
+          mysql_free_result(result);
+          return;
+        }
+        // 提交事务
+        res = mysql_query(mysql, "COMMIT");
+        if (res) {
+          mysql_query(mysql, "ROLLBACK");
+          m_lock.unlock();
+          response_json["status"] = "error";
+          response_json["message"] = "提交事务失败";
+          (*message_json)["server_content"] = response_json.dump(4);
+          mysql_free_result(result);
+          return;
+        }
+        m_lock.unlock();
+        response_json["status"] = "success";
+        response_json["message"] = "file already exists, citation count "
+                                   "increased, virtual path added";
+        (*message_json)["server_content"] = response_json.dump(4);
+        return;
+      }
+      mysql_free_result(result);
+    }
+    // 文件不存在,保存文件,并向文件表和联系表增加记录
+    actual_file_path = generateStoragePath(file_id);
+    std::stringstream insert_file_table_sql;
+    std::stringstream insert_own_table_sql;
+    insert_file_table_sql
+        << "insert into file_table(file_id, file_size,actual_file_path, "
+           "citation_count,sha256_num) "
+        << "values('" << file_id << "', '" << file_size << "', '"
+        << actual_file_path << "', 1, '" << sha256_num << "');";
+    insert_own_table_sql << "insert into own_table(file_id, virtual_file_path, "
+                            "username) values('"
+                         << file_id << "', '" << virtual_file_path << "', '"
+                         << username << "');";
+    m_lock.lock();
+    // 开始事务
+    res = mysql_query(mysql, "START TRANSACTION");
+    if (res) {
+      m_lock.unlock();
+      response_json["status"] = "error";
+      response_json["message"] = "启动事务失败";
+      (*message_json)["server_content"] = response_json.dump(4);
+      return;
+    }
+    res = mysql_query(mysql, insert_file_table_sql.str().c_str());
+    if (res) {
+      mysql_query(mysql, "ROLLBACK");
+      m_lock.unlock();
+      response_json["status"] = "error";
+      response_json["message"] = "sql插入错误";
+      (*message_json)["server_content"] = response_json.dump(4);
+      return;
+    }
+    // 执行插入
+    res = mysql_query(mysql, insert_own_table_sql.str().c_str());
+    if (res) {
+      mysql_query(mysql, "ROLLBACK");
+      m_lock.unlock();
+      response_json["status"] = "error";
+      response_json["message"] = "SQL插入错误";
+      (*message_json)["server_content"] = response_json.dump(4);
+      return;
+    }
+    // 提交事务
+    res = mysql_query(mysql, "COMMIT");
+    if (res) {
+      mysql_query(mysql, "ROLLBACK");
+      m_lock.unlock();
+      response_json["status"] = "error";
+      response_json["message"] = "提交事务失败";
+      (*message_json)["server_content"] = response_json.dump(4);
+      return;
+    }
+    m_lock.unlock();
+
+    fs::path file_path;
+    file_path = actual_file_path;
+    fs::create_directories(file_path.parent_path());
+    response_json["status"] = "success";
+    response_json["message"] = "file uploaded begin";
+    response_json["actual_file_path"] = actual_file_path;
     (*message_json)["server_content"] = response_json.dump(4);
     return;
   }
-  document_content = base64_decode(document_content);
-  output_file.write(document_content.c_str(), document_content.size());
-  output_file.close();
-
-  response_json["status"] = "success";
-  response_json["message"] = "file uploaded successfully";
-  (*message_json)["server_content"] = response_json.dump(4);
-  return;
 }
 static auto_register<file_upload_way> file_upload_auto_register;
 
