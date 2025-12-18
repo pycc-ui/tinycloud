@@ -391,26 +391,284 @@ static auto_register<file_upload_way> file_upload_auto_register;
 
 void file_delete_way::request_stratege(MYSQL *mysql,
                                        std::unique_ptr<json> &message_json) {
-  std::string user;
+  string client_content = (*message_json)["client_content"];
+  json post_client = json::parse(client_content);
+  message_json->erase("client_content");
+  json response_json;
+
+  std::string virtual_file_path = post_client["virtual_file_path"];
+  std::string username = post_client["username"];
+
+  // 1. 先查询要删除的文件ID
+  std::stringstream select_sql;
+  select_sql << "SELECT file_id FROM own_table WHERE username = '" << username
+             << "' AND virtual_file_path = '" << virtual_file_path << "';";
+
+  m_lock.lock();
+  int res = mysql_query(mysql, select_sql.str().c_str());
+  if (res) {
+    m_lock.unlock();
+    response_json["status"] = "error";
+    response_json["message"] = "sql select error";
+    (*message_json)["server_content"] = response_json.dump(4);
+    return;
+  }
+
+  MYSQL_RES *result = mysql_store_result(mysql);
+  if (result == nullptr || result->row_count == 0) {
+    if (result)
+      mysql_free_result(result);
+    m_lock.unlock();
+    response_json["status"] = "error";
+    response_json["message"] = "file not found";
+    (*message_json)["server_content"] = response_json.dump(4);
+    return;
+  }
+
+  MYSQL_ROW row = mysql_fetch_row(result);
+  std::string file_id = row[0];
+  mysql_free_result(result);
+
+  // 2. 开始事务
+  res = mysql_query(mysql, "START TRANSACTION");
+  if (res) {
+    m_lock.unlock();
+    response_json["status"] = "error";
+    response_json["message"] = "启动事务失败";
+    (*message_json)["server_content"] = response_json.dump(4);
+    return;
+  }
+
+  // 3. 删除own_table中的关联记录
+  std::stringstream delete_own_sql;
+  delete_own_sql << "DELETE FROM own_table WHERE username = '" << username
+                 << "' AND virtual_file_path = '" << virtual_file_path << "';";
+
+  res = mysql_query(mysql, delete_own_sql.str().c_str());
+  if (res) {
+    mysql_query(mysql, "ROLLBACK");
+    m_lock.unlock();
+    response_json["status"] = "error";
+    response_json["message"] = "删除文件关联失败";
+    (*message_json)["server_content"] = response_json.dump(4);
+    return;
+  }
+
+  // 4. 减少file_table中的引用计数
+  std::stringstream update_file_sql;
+  update_file_sql
+      << "UPDATE file_table SET citation_count = citation_count - 1 "
+      << "WHERE file_id = '" << file_id << "';";
+
+  res = mysql_query(mysql, update_file_sql.str().c_str());
+  if (res) {
+    mysql_query(mysql, "ROLLBACK");
+    m_lock.unlock();
+    response_json["status"] = "error";
+    response_json["message"] = "更新引用计数失败";
+    (*message_json)["server_content"] = response_json.dump(4);
+    return;
+  }
+
+  // 5. 检查引用计数是否为0，如果是则删除文件记录和物理文件
+  std::stringstream check_count_sql;
+  check_count_sql << "SELECT citation_count, actual_file_path FROM file_table "
+                  << "WHERE file_id = '" << file_id << "' FOR UPDATE;";
+
+  res = mysql_query(mysql, check_count_sql.str().c_str());
+  if (res) {
+    mysql_query(mysql, "ROLLBACK");
+    m_lock.unlock();
+    response_json["status"] = "error";
+    response_json["message"] = "检查引用计数失败";
+    (*message_json)["server_content"] = response_json.dump(4);
+    return;
+  }
+
+  result = mysql_store_result(mysql);
+  row = mysql_fetch_row(result);
+  int citation_count = std::stoi(row[0]);
+  std::string actual_file_path = row[1];
+  mysql_free_result(result);
+
+  if (citation_count <= 0) {
+    // 删除file_table中的记录
+    std::stringstream delete_file_sql;
+    delete_file_sql << "DELETE FROM file_table WHERE file_id = '" << file_id
+                    << "';";
+
+    res = mysql_query(mysql, delete_file_sql.str().c_str());
+    if (res) {
+      mysql_query(mysql, "ROLLBACK");
+      m_lock.unlock();
+      response_json["status"] = "error";
+      response_json["message"] = "删除文件记录失败";
+      (*message_json)["server_content"] = response_json.dump(4);
+      return;
+    }
+
+    // 提交事务
+    res = mysql_query(mysql, "COMMIT");
+    m_lock.unlock();
+
+    if (res) {
+      response_json["status"] = "error";
+      response_json["message"] = "提交事务失败";
+    } else {
+      // 删除物理文件
+      if (std::remove(actual_file_path.c_str()) == 0) {
+        response_json["status"] = "success";
+        response_json["message"] = "文件删除成功（包括物理文件）";
+      } else {
+        response_json["status"] = "warning";
+        response_json["message"] = "文件记录已删除，但物理文件删除失败";
+      }
+    }
+  } else {
+    // 提交事务
+    res = mysql_query(mysql, "COMMIT");
+    m_lock.unlock();
+
+    if (res) {
+      response_json["status"] = "error";
+      response_json["message"] = "提交事务失败";
+    } else {
+      response_json["status"] = "success";
+      response_json["message"] = "文件关联已删除，物理文件仍被其他用户引用";
+    }
+  }
+
+  (*message_json)["server_content"] = response_json.dump(4);
 }
 static auto_register<file_delete_way> file_delete_auto_register;
 
 void file_rename_way::request_stratege(MYSQL *mysql,
                                        std::unique_ptr<json> &message_json) {
-  std::string user;
+  string client_content = (*message_json)["client_content"];
+  json post_client = json::parse(client_content);
+  message_json->erase("client_content");
+  json response_json;
+
+  std::string virtual_file_path = post_client["virtual_file_path"];
+  std::string username = post_client["username"];
+  std::string new_name_path = post_client["new_name_path"];
+
+  // 1. 检查源文件是否存在
+  std::stringstream check_src_sql;
+  check_src_sql << "SELECT COUNT(*) FROM own_table WHERE username = '"
+                << username << "' AND virtual_file_path = '"
+                << virtual_file_path << "';";
+
+  m_lock.lock();
+  int res = mysql_query(mysql, check_src_sql.str().c_str());
+  if (res) {
+    m_lock.unlock();
+    response_json["status"] = "error";
+    response_json["message"] = "sql query error";
+    (*message_json)["server_content"] = response_json.dump(4);
+    return;
+  }
+
+  MYSQL_RES *result = mysql_store_result(mysql);
+  MYSQL_ROW row = mysql_fetch_row(result);
+  int src_count = std::stoi(row[0]);
+  mysql_free_result(result);
+
+  if (src_count == 0) {
+    m_lock.unlock();
+    response_json["status"] = "error";
+    response_json["message"] = "source file not found";
+    (*message_json)["server_content"] = response_json.dump(4);
+    return;
+  }
+
+  // 3. 执行重命名操作
+  std::stringstream rename_file_sql;
+  rename_file_sql << "UPDATE own_table SET virtual_file_path = '"
+                  << new_name_path << "' "
+                  << "WHERE username = '" << username
+                  << "' AND virtual_file_path = '" << virtual_file_path << "';";
+
+  res = mysql_query(mysql, rename_file_sql.str().c_str());
+  m_lock.unlock();
+
+  if (res) {
+    response_json["status"] = "error";
+    response_json["message"] = "rename failed";
+  } else {
+    response_json["status"] = "success";
+    response_json["message"] = "file renamed successfully";
+  }
+
+  (*message_json)["server_content"] = response_json.dump(4);
 }
+
 static auto_register<file_rename_way> file_rename_auto_register;
 
 void file_move_way::request_stratege(MYSQL *mysql,
                                      std::unique_ptr<json> &message_json) {
+  string client_content = (*message_json)["client_content"];
+  json post_client = json::parse(client_content);
+  message_json->erase("client_content");
+  json response_json;
 
-  std::string user;
+  std::string virtual_file_path = post_client["virtual_file_path"];
+  std::string username = post_client["username"];
+  std::string new_file_path = post_client["new_file_path"];
+
+  // 1. 检查源文件是否存在
+  std::stringstream check_src_sql;
+  check_src_sql << "SELECT COUNT(*) FROM own_table WHERE username = '"
+                << username << "' AND virtual_file_path = '"
+                << virtual_file_path << "';";
+
+  m_lock.lock();
+  int res = mysql_query(mysql, check_src_sql.str().c_str());
+  if (res) {
+    m_lock.unlock();
+    response_json["status"] = "error";
+    response_json["message"] = "sql query error";
+    (*message_json)["server_content"] = response_json.dump(4);
+    return;
+  }
+
+  MYSQL_RES *result = mysql_store_result(mysql);
+  MYSQL_ROW row = mysql_fetch_row(result);
+  int src_count = std::stoi(row[0]);
+  mysql_free_result(result);
+
+  if (src_count == 0) {
+    m_lock.unlock();
+    response_json["status"] = "error";
+    response_json["message"] = "source file not found";
+    (*message_json)["server_content"] = response_json.dump(4);
+    return;
+  }
+
+  std::stringstream move_file_sql;
+  move_file_sql << "UPDATE own_table SET virtual_file_path = '" << new_file_path
+                << "' "
+                << "WHERE username = '" << username
+                << "' AND virtual_file_path = '" << virtual_file_path << "';";
+
+  res = mysql_query(mysql, move_file_sql.str().c_str());
+  m_lock.unlock();
+
+  if (res) {
+    response_json["status"] = "error";
+    response_json["message"] = "move failed";
+  } else {
+    response_json["status"] = "success";
+    response_json["message"] = "file moved successfully";
+  }
+
+  (*message_json)["server_content"] = response_json.dump(4);
 }
 static auto_register<file_move_way> file_move_auto_register;
 
 void file_copy_way::request_stratege(MYSQL *mysql,
                                      std::unique_ptr<json> &message_json) {
-  std::string user;
+  // 暂时不需要写
 }
 static auto_register<file_copy_way> file_copy_auto_register;
 
