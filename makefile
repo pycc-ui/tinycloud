@@ -9,7 +9,7 @@ else
     CXXFLAGS += -O2
 endif
 
-SRCS = main.cpp timer/lst_timer.cpp http/http_conn.cpp http/request_way.cpp log/log.cpp CGImysql/sql_connection_pool.cpp webserver.cpp config.cpp base64/base64.cpp
+SRCS = main/main.cpp timer/lst_timer.cpp http/http_conn.cpp http/request_way.cpp log/log.cpp CGImysql/sql_connection_pool.cpp webserver/webserver.cpp config/config.cpp base64/base64.cpp
 OBJS = $(SRCS:.cpp=.o)
 DEPS = $(SRCS:.cpp=.d)
 
