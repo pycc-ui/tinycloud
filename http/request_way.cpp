@@ -675,24 +675,457 @@ static auto_register<file_copy_way> file_copy_auto_register;
 // 目录操作相关策略实现
 void directory_create_way::request_stratege(
     MYSQL *mysql, std::unique_ptr<json> &message_json) {
-  std::string user;
+
+  string client_content = (*message_json)["client_content"];
+  json post_client = json::parse(client_content);
+  message_json->erase("client_content");
+  json response_json;
+
+  string new_dir_path = post_client["new_dir_path"];
+  string username = post_client["username"];
+
+  // 1. 检查目录是否已存在
+  std::stringstream check_sql;
+  check_sql << "SELECT COUNT(*) FROM own_table WHERE username = '" << username
+            << "' AND virtual_file_path = '" << new_dir_path << "';";
+
+  m_lock.lock();
+  int res = mysql_query(mysql, check_sql.str().c_str());
+  if (res) {
+    m_lock.unlock();
+    response_json["status"] = "error";
+    response_json["message"] = "sql query error";
+    (*message_json)["server_content"] = response_json.dump(4);
+    return;
+  }
+
+  MYSQL_RES *result = mysql_store_result(mysql);
+  MYSQL_ROW row = mysql_fetch_row(result);
+  int count = std::stoi(row[0]);
+  mysql_free_result(result);
+
+  if (count > 0) {
+    m_lock.unlock();
+    response_json["status"] = "error";
+    response_json["message"] = "directory already exists";
+    (*message_json)["server_content"] = response_json.dump(4);
+    return;
+  }
+
+  // 2. 插入目录记录
+  // 目录使用特殊的file_id "directory"，is_dir设置为1
+  std::stringstream insert_dir_sql;
+  insert_dir_sql
+      << "INSERT INTO own_table(file_id, virtual_file_path, username, is_dir) "
+      << "VALUES('directory', '" << new_dir_path << "', '" << username
+      << "', 1);";
+
+  res = mysql_query(mysql, insert_dir_sql.str().c_str());
+  m_lock.unlock();
+
+  if (res) {
+    response_json["status"] = "error";
+    response_json["message"] = "directory creation failed";
+  } else {
+    response_json["status"] = "success";
+    response_json["message"] = "directory created successfully";
+  }
+
+  (*message_json)["server_content"] = response_json.dump(4);
 }
 static auto_register<directory_create_way> directory_create_auto_register;
 
 void directory_delete_way::request_stratege(
     MYSQL *mysql, std::unique_ptr<json> &message_json) {
-  std::string user;
+
+  string client_content = (*message_json)["client_content"];
+  json post_client = json::parse(client_content);
+  message_json->erase("client_content");
+  json response_json;
+
+  std::string virtual_dir_path = post_client["virtual_dir_path"];
+  std::string username = post_client["username"];
+
+  // 1. 检查目录是否存在且确实是目录
+  std::stringstream check_dir_sql;
+  check_dir_sql << "SELECT COUNT(*) FROM own_table WHERE username = '"
+                << username << "' AND virtual_file_path = '" << virtual_dir_path
+                << "' AND is_dir = 1;";
+
+  m_lock.lock();
+  int res = mysql_query(mysql, check_dir_sql.str().c_str());
+  if (res) {
+    m_lock.unlock();
+    response_json["status"] = "error";
+    response_json["message"] = "sql query error";
+    (*message_json)["server_content"] = response_json.dump(4);
+    return;
+  }
+
+  MYSQL_RES *result = mysql_store_result(mysql);
+  MYSQL_ROW row = mysql_fetch_row(result);
+  int dir_count = std::stoi(row[0]);
+  mysql_free_result(result);
+
+  if (dir_count == 0) {
+    m_lock.unlock();
+    response_json["status"] = "error";
+    response_json["message"] = "directory not found or not a directory";
+    (*message_json)["server_content"] = response_json.dump(4);
+    return;
+  }
+
+  // 2. 检查目录是否为空（不包含子文件或子目录）
+  std::stringstream check_empty_sql;
+  check_empty_sql << "SELECT COUNT(*) FROM own_table WHERE username = '"
+                  << username << "' AND virtual_file_path LIKE '"
+                  << virtual_dir_path << "/%';";
+
+  res = mysql_query(mysql, check_empty_sql.str().c_str());
+  if (res) {
+    m_lock.unlock();
+    response_json["status"] = "error";
+    response_json["message"] = "sql query error";
+    (*message_json)["server_content"] = response_json.dump(4);
+    return;
+  }
+
+  result = mysql_store_result(mysql);
+  row = mysql_fetch_row(result);
+  int child_count = std::stoi(row[0]);
+  mysql_free_result(result);
+
+  if (child_count > 0) {
+    m_lock.unlock();
+    response_json["status"] = "error";
+    response_json["message"] = "directory is not empty, cannot delete";
+    (*message_json)["server_content"] = response_json.dump(4);
+    return;
+  }
+
+  // 3. 删除目录记录
+  std::stringstream delete_dir_sql;
+  delete_dir_sql << "DELETE FROM own_table WHERE username = '" << username
+                 << "' AND virtual_file_path = '" << virtual_dir_path
+                 << "' AND is_dir = 1;";
+
+  res = mysql_query(mysql, delete_dir_sql.str().c_str());
+  m_lock.unlock();
+
+  if (res) {
+    response_json["status"] = "error";
+    response_json["message"] = "directory deletion failed";
+  } else {
+    response_json["status"] = "success";
+    response_json["message"] = "directory deleted successfully";
+  }
+
+  (*message_json)["server_content"] = response_json.dump(4);
 }
 static auto_register<directory_delete_way> directory_delete_auto_register;
 
 void directory_list_way::request_stratege(MYSQL *mysql,
                                           std::unique_ptr<json> &message_json) {
-  std::string user;
+  string client_content = (*message_json)["client_content"];
+  json post_client = json::parse(client_content);
+  message_json->erase("client_content");
+  json response_json;
+
+  std::string virtual_dir_path = post_client["virtual_dir_path"];
+  std::string username = post_client["username"];
+
+  // 1. 检查目录是否存在且确实是目录
+  std::stringstream check_dir_sql;
+  check_dir_sql << "SELECT COUNT(*) FROM own_table WHERE username = '"
+                << username << "' AND virtual_file_path = '" << virtual_dir_path
+                << "' AND is_dir = 1;";
+
+  m_lock.lock();
+  int res = mysql_query(mysql, check_dir_sql.str().c_str());
+  if (res) {
+    m_lock.unlock();
+    response_json["status"] = "error";
+    response_json["message"] = "sql query error";
+    (*message_json)["server_content"] = response_json.dump(4);
+    return;
+  }
+
+  MYSQL_RES *result = mysql_store_result(mysql);
+  MYSQL_ROW row = mysql_fetch_row(result);
+  int dir_count = std::stoi(row[0]);
+  mysql_free_result(result);
+
+  // 如果是根目录，不检查存在性（根目录可能不存在记录）
+  bool is_root_dir = (virtual_dir_path == "/" || virtual_dir_path.empty());
+
+  if (!is_root_dir && dir_count == 0) {
+    m_lock.unlock();
+    response_json["status"] = "error";
+    response_json["message"] = "directory not found or not a directory";
+    (*message_json)["server_content"] = response_json.dump(4);
+    return;
+  }
+
+  // 2. 查询目录下的直接子项
+  // 使用 LIKE 查询匹配下一级，不查询更深的层级
+  std::stringstream list_sql;
+
+  if (is_root_dir) {
+    // 根目录：查询所有不包含斜杠的直接子项，或者以/开头后没有斜杠的
+    // 例如: /file1, /dir1
+    list_sql
+        << "SELECT virtual_file_path, is_dir FROM own_table WHERE username = '"
+        << username << "' AND virtual_file_path REGEXP '^/[^/]+$';";
+  } else {
+    // 普通目录：查询以目录路径+斜杠开头，且后面没有斜杠的直接子项
+    // 例如: /dir1/file1, /dir1/subdir1
+    std::string pattern = virtual_dir_path + "/[^/]+$";
+    list_sql
+        << "SELECT virtual_file_path, is_dir FROM own_table WHERE username = '"
+        << username << "' AND virtual_file_path REGEXP '" << pattern << "';";
+  }
+
+  res = mysql_query(mysql, list_sql.str().c_str());
+  m_lock.unlock();
+
+  if (res) {
+    response_json["status"] = "error";
+    response_json["message"] = "sql query error";
+    (*message_json)["server_content"] = response_json.dump(4);
+    return;
+  }
+
+  result = mysql_store_result(mysql);
+  if (!result) {
+    response_json["status"] = "error";
+    response_json["message"] = "no result from query";
+    (*message_json)["server_content"] = response_json.dump(4);
+    return;
+  }
+
+  // 3. 构建返回的目录列表
+  json dir_list_json = json::array();
+  int num_rows = mysql_num_rows(result);
+
+  if (num_rows > 0) {
+    MYSQL_ROW row;
+    while ((row = mysql_fetch_row(result))) {
+      std::string full_path = row[0];
+      int is_dir = std::stoi(row[1]);
+
+      // 提取文件名或目录名（最后一部分）
+      size_t last_slash = full_path.find_last_of('/');
+      std::string name;
+      if (last_slash != std::string::npos) {
+        name = full_path.substr(last_slash + 1);
+      } else {
+        name = full_path; // 根目录下的情况
+      }
+
+      // 构建项信息
+      json item;
+      item["name"] = name;
+      item["full_path"] = full_path;
+      item["is_dir"] = is_dir;
+
+      // 如果是文件，还需要查询文件大小等信息
+      if (is_dir == 0) {
+        // 查询文件详细信息
+        std::stringstream file_info_sql;
+        file_info_sql << "SELECT f.file_size, f.sha256_num FROM file_table f "
+                      << "JOIN own_table o ON f.file_id = o.file_id "
+                      << "WHERE o.username = '" << username
+                      << "' AND o.virtual_file_path = '" << full_path << "';";
+
+        m_lock.lock();
+        int info_res = mysql_query(mysql, file_info_sql.str().c_str());
+        if (!info_res) {
+          MYSQL_RES *info_result = mysql_store_result(mysql);
+          if (info_result && mysql_num_rows(info_result) > 0) {
+            MYSQL_ROW info_row = mysql_fetch_row(info_result);
+            item["file_size"] = info_row[0];
+            item["sha256"] = info_row[1];
+          }
+          if (info_result)
+            mysql_free_result(info_result);
+        }
+        m_lock.unlock();
+      }
+
+      dir_list_json.push_back(item);
+    }
+  }
+
+  mysql_free_result(result);
+
+  // 4. 返回结果
+  response_json["status"] = "success";
+  response_json["message"] = "directory list retrieved";
+  response_json["dir_list"] = dir_list_json;
+
+  (*message_json)["server_content"] = response_json.dump(4);
 }
 static auto_register<directory_list_way> directory_list_auto_register;
 
 void directory_rename_way::request_stratege(
     MYSQL *mysql, std::unique_ptr<json> &message_json) {
-  std::string user;
+
+  string client_content = (*message_json)["client_content"];
+  json post_client = json::parse(client_content);
+  message_json->erase("client_content");
+  json response_json;
+
+  std::string old_dir_path = post_client["old_dir_path"];
+  std::string username = post_client["username"];
+  std::string new_dir_path = post_client["new_dir_path"];
+
+  // 1. 检查旧目录是否存在且确实是目录
+  std::stringstream check_old_sql;
+  check_old_sql << "SELECT COUNT(*) FROM own_table WHERE username = '"
+                << username << "' AND virtual_file_path = '" << old_dir_path
+                << "' AND is_dir = 1;";
+
+  m_lock.lock();
+  int res = mysql_query(mysql, check_old_sql.str().c_str());
+  if (res) {
+    m_lock.unlock();
+    response_json["status"] = "error";
+    response_json["message"] = "sql query error";
+    (*message_json)["server_content"] = response_json.dump(4);
+    return;
+  }
+
+  MYSQL_RES *result = mysql_store_result(mysql);
+  MYSQL_ROW row = mysql_fetch_row(result);
+  int old_count = std::stoi(row[0]);
+  mysql_free_result(result);
+
+  if (old_count == 0) {
+    m_lock.unlock();
+    response_json["status"] = "error";
+    response_json["message"] = "old directory not found or not a directory";
+    (*message_json)["server_content"] = response_json.dump(4);
+    return;
+  }
+
+  // 2. 检查新目录路径是否已存在
+  std::stringstream check_new_sql;
+  check_new_sql << "SELECT COUNT(*) FROM own_table WHERE username = '"
+                << username << "' AND virtual_file_path = '" << new_dir_path
+                << "';";
+
+  res = mysql_query(mysql, check_new_sql.str().c_str());
+  if (res) {
+    m_lock.unlock();
+    response_json["status"] = "error";
+    response_json["message"] = "sql query error";
+    (*message_json)["server_content"] = response_json.dump(4);
+    return;
+  }
+
+  result = mysql_store_result(mysql);
+  row = mysql_fetch_row(result);
+  int new_count = std::stoi(row[0]);
+  mysql_free_result(result);
+
+  if (new_count > 0) {
+    m_lock.unlock();
+    response_json["status"] = "error";
+    response_json["message"] = "new directory path already exists";
+    (*message_json)["server_content"] = response_json.dump(4);
+    return;
+  }
+
+  // 3. 开始事务
+  res = mysql_query(mysql, "START TRANSACTION");
+  if (res) {
+    m_lock.unlock();
+    response_json["status"] = "error";
+    response_json["message"] = "start transaction failed";
+    (*message_json)["server_content"] = response_json.dump(4);
+    return;
+  }
+
+  // 4. 重命名目录本身
+  std::stringstream rename_dir_sql;
+  rename_dir_sql << "UPDATE own_table SET virtual_file_path = '" << new_dir_path
+                 << "' WHERE username = '" << username
+                 << "' AND virtual_file_path = '" << old_dir_path
+                 << "' AND is_dir = 1;";
+
+  res = mysql_query(mysql, rename_dir_sql.str().c_str());
+  if (res) {
+    mysql_query(mysql, "ROLLBACK");
+    m_lock.unlock();
+    response_json["status"] = "error";
+    response_json["message"] = "rename directory failed";
+    (*message_json)["server_content"] = response_json.dump(4);
+    return;
+  }
+
+  // 5. 重命名目录下的所有子文件和子目录
+  // 注意：这里需要使用 MySQL 的 REPLACE 函数来替换路径前缀
+  // 但 MySQL 的 UPDATE 不支持直接使用 REPLACE 更新自己，所以需要先查找再更新
+  // 这里使用一个简单的策略：先查询出所有子路径，然后逐条更新
+
+  // 查询所有子路径
+  std::stringstream get_children_sql;
+  get_children_sql
+      << "SELECT virtual_file_path FROM own_table WHERE username = '"
+      << username << "' AND virtual_file_path LIKE '" << old_dir_path << "/%';";
+
+  res = mysql_query(mysql, get_children_sql.str().c_str());
+  if (res) {
+    mysql_query(mysql, "ROLLBACK");
+    m_lock.unlock();
+    response_json["status"] = "error";
+    response_json["message"] = "get children paths failed";
+    (*message_json)["server_content"] = response_json.dump(4);
+    return;
+  }
+
+  result = mysql_store_result(mysql);
+  if (result) {
+    MYSQL_ROW child_row;
+    while ((child_row = mysql_fetch_row(result))) {
+      std::string old_child_path = child_row[0];
+      // 计算新路径：将 old_dir_path 前缀替换为 new_dir_path
+      std::string new_child_path =
+          new_dir_path + old_child_path.substr(old_dir_path.length());
+
+      std::stringstream update_child_sql;
+      update_child_sql << "UPDATE own_table SET virtual_file_path = '"
+                       << new_child_path << "' WHERE username = '" << username
+                       << "' AND virtual_file_path = '" << old_child_path
+                       << "';";
+
+      res = mysql_query(mysql, update_child_sql.str().c_str());
+      if (res) {
+        mysql_free_result(result);
+        mysql_query(mysql, "ROLLBACK");
+        m_lock.unlock();
+        response_json["status"] = "error";
+        response_json["message"] = "update child path failed";
+        (*message_json)["server_content"] = response_json.dump(4);
+        return;
+      }
+    }
+    mysql_free_result(result);
+  }
+
+  // 6. 提交事务
+  res = mysql_query(mysql, "COMMIT");
+  m_lock.unlock();
+
+  if (res) {
+    mysql_query(mysql, "ROLLBACK");
+    response_json["status"] = "error";
+    response_json["message"] = "commit transaction failed";
+  } else {
+    response_json["status"] = "success";
+    response_json["message"] = "directory renamed successfully";
+  }
+
+  (*message_json)["server_content"] = response_json.dump(4);
 }
 static auto_register<directory_rename_way> directory_rename_auto_register;
