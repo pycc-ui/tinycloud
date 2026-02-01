@@ -53,7 +53,7 @@ void login_way::request_stratege(MYSQL *mysql,
   json post_client = json::parse(client_content);
   json response_json;
   message_json->erase("client_content");
-  user = post_client["user"];
+  user = post_client["username"];
   password = post_client["passwd"];
 
   if (users.find(user) != users.end() && users[user] == password) {
@@ -76,7 +76,7 @@ void register_way::request_stratege(MYSQL *mysql,
   json post_client = json::parse(client_content);
   message_json->erase("client_content");
   json response_json;
-  user = post_client["user"];
+  user = post_client["username"];
   password = post_client["passwd"];
 
   if (user.size() <= 1 || password.size() <= 1 || user.size() > 40 ||
@@ -91,7 +91,7 @@ void register_way::request_stratege(MYSQL *mysql,
 
   if (users.find(user) == users.end()) {
     std::stringstream insert_sql;
-    insert_sql << "insert into user(username, passwd) values(";
+    insert_sql << "insert into user_table(username, passwd) values(";
     insert_sql << "'" << user << "', ";
     insert_sql << "'" << password << "')";
 
