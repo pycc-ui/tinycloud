@@ -58,6 +58,7 @@ void login_way::request_stratege(MYSQL *mysql,
 
   if (users.find(user) != users.end() && users[user] == password) {
     response_json["status"] = "success";
+    (*message_json)["server_content"] = response_json.dump(4);
   } else {
     response_json["status"] = "error";
     response_json["message"] = "invalid username or password";

@@ -400,6 +400,7 @@ http_conn::HTTP_CODE http_conn::process_read() {
     // 开始的行在m_checked_idx之前的m_checked_idx开始
     // 而m_checked_idx的位置在两个空字符后面(或者没有)
     // while的条件能保证getline每次都能成功
+    // 读消息体时不会触发parse_line
     m_start_line = m_checked_idx;
     switch (m_check_state) {
     case CHECK_STATE_REQUESTLINE: {
@@ -436,7 +437,7 @@ http_conn::HTTP_CODE http_conn::process_read() {
 // cgi处理数据库
 http_conn::HTTP_CODE http_conn::do_request() {
 
-  way_manager solve_request;
+  way_manager solve_request(m_close_log);
   solve_request.do_way(mysql, m_read_message);
   return FILE_REQUEST;
 }
@@ -587,6 +588,7 @@ void http_conn::process_read_phase() {
     (*m_read_message)["read_ret"] = static_cast<int>(read_ret);
     if (read_ret == NO_REQUEST) {
       // 没读完继续读
+      LOG_INFO("%s", "没有读完继续读");
       modfd(m_epollfd, m_sockfd, EPOLLIN, m_TRIGMode);
       return;
     }
@@ -597,6 +599,7 @@ void http_conn::process_read_phase() {
     m_lock.unlock();
     m_read_message = std::make_unique<json>();
   } while (!read_fin);
+  LOG_INFO("%s", "读取完毕");
 
   if (Connection) {
     init_read();
@@ -605,6 +608,7 @@ void http_conn::process_read_phase() {
 
   m_lock.lock();
   if (!m_write_tasking) {
+    LOG_INFO("%s", "通知写");
     modfd(m_epollfd, m_sockfd, EPOLLOUT, m_TRIGMode);
   }
   m_lock.unlock();
@@ -621,6 +625,7 @@ bool http_conn::process_write_phase() {
     m_lock.unlock();
     return true;
   }
+  LOG_INFO("%s", "取得写锁");
   m_write_message = std::move(m_read_message_queue.front());
   m_read_message_queue.pop_front();
   m_lock.unlock();
@@ -642,8 +647,10 @@ bool http_conn::process_write_phase() {
   m_write_tasking = false;
   if (!m_read_message_queue.empty()) {
     init_write();
+    LOG_INFO("%s", "清除缓存继续写");
     modfd(m_epollfd, m_sockfd, EPOLLOUT, m_TRIGMode);
   } else if (!(*m_write_message)["Connection"]) {
+    LOG_INFO("%s", "断开持续连接");
     m_lock.unlock();
     return false;
   }

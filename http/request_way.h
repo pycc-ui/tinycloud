@@ -8,6 +8,7 @@
 
 #include "../CGImysql/sql_connection_pool.h"
 #include "../lock/locker.h"
+#include "../log/log.h"
 #include "../nlohmann/json.hpp"
 
 using json = nlohmann::json;
@@ -33,15 +34,30 @@ private:
 // 策略使用接口
 class way_manager {
   template <typename T> friend class auto_register;
+  int m_close_log;
 
 public:
-  way_manager() = default;
+  way_manager(int close_log) { m_close_log = close_log; }
   ~way_manager() = default;
   void do_way(MYSQL *mysql, std::unique_ptr<json> &message_json) {
     auto &creators = get_creator();
     auto it = creators.find((*message_json)["url"]);
     if (it != creators.end() && it->second != nullptr) {
-      it->second->request_stratege(mysql, message_json);
+      try {
+        it->second->request_stratege(mysql, message_json);
+      } catch (const std::exception &e) {
+        // 获取异常信息
+        LOG_ERROR("%s : %s", typeid(e).name(), e.what());
+        json response_json;
+        response_json["status"] = "error";
+        response_json["message"] = "request stratege exec error";
+        (*message_json)["server_content"] = response_json.dump(4);
+      }
+    } else {
+      json response_json;
+      response_json["status"] = "error";
+      response_json["message"] = "No endpoints";
+      (*message_json)["server_content"] = response_json.dump(4);
     }
   }
 
