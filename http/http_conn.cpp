@@ -5,6 +5,7 @@
 #include <mysql/mysql.h>
 #include <mysql/mysql_version.h>
 #include <string>
+#include <sys/epoll.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -478,6 +479,7 @@ bool http_conn::write() {
 
     if (bytes_to_send <= 0) {
       m_response_content.clear();
+      LOG_INFO("%s", "写完毕");
       return true;
     }
   }
@@ -579,7 +581,6 @@ bool http_conn::process_write(HTTP_CODE ret) {
 }
 
 void http_conn::process_read_phase() {
-  // 处理已经读的报文
   bool read_fin;
   bool Connection;
   do {
@@ -587,52 +588,77 @@ void http_conn::process_read_phase() {
     cleanup_parsed_buffer();
     (*m_read_message)["read_ret"] = static_cast<int>(read_ret);
     if (read_ret == NO_REQUEST) {
-      // 没读完继续读
       LOG_INFO("%s", "没有读完继续读");
       modfd(m_epollfd, m_sockfd, EPOLLIN, m_TRIGMode);
       return;
     }
     read_fin = (*m_read_message)["read_fin"];
     Connection = (*m_read_message)["Connection"];
+
     m_lock.lock();
     m_read_message_queue.push_back(std::move(m_read_message));
     m_lock.unlock();
+
     m_read_message = std::make_unique<json>();
   } while (!read_fin);
-  LOG_INFO("%s", "读取完毕");
+
+  LOG_INFO("\n%s", "读取完毕");
 
   if (Connection) {
     init_read();
-    modfd(m_epollfd, m_sockfd, EPOLLIN, m_TRIGMode);
-  }
+    LOG_INFO("%s", "通知继续读");
 
-  m_lock.lock();
-  if (!m_write_tasking) {
-    LOG_INFO("%s", "通知写");
-    modfd(m_epollfd, m_sockfd, EPOLLOUT, m_TRIGMode);
+    // 最小临界区：仅获取需要的信息
+    bool need_write;
+    m_lock.lock();
+    need_write = !m_write_tasking && !m_read_message_queue.empty();
+    m_lock.unlock();
+
+    if (need_write) {
+      LOG_INFO("%s", "通知写");
+      // 持久连接需要同时监听读写
+      modfd(m_epollfd, m_sockfd, EPOLLIN | EPOLLOUT, m_TRIGMode);
+    } else {
+      // 只监听读
+      modfd(m_epollfd, m_sockfd, EPOLLIN, m_TRIGMode);
+    }
+  } else {
+    // 非持久连接：请求完成后只需写响应
+    bool need_write;
+    m_lock.lock();
+    need_write = !m_write_tasking && !m_read_message_queue.empty();
+    m_lock.unlock();
+
+    if (need_write) {
+      // 只设置EPOLLOUT
+      modfd(m_epollfd, m_sockfd, EPOLLOUT, m_TRIGMode);
+    }
+    // 没有数据可写时，连接会在process_write_phase中关闭
   }
-  m_lock.unlock();
 }
 
 bool http_conn::process_write_phase() {
+  // 快速失败检查
   m_lock.lock();
-  if (m_write_tasking) {
+  if (m_write_tasking || m_read_message_queue.empty()) {
     m_lock.unlock();
     return true;
   }
+
+  // 获取写任务
   m_write_tasking = true;
-  if (m_read_message_queue.empty()) {
-    m_lock.unlock();
-    return true;
-  }
-  LOG_INFO("%s", "取得写锁");
   m_write_message = std::move(m_read_message_queue.front());
   m_read_message_queue.pop_front();
+
   m_lock.unlock();
 
+  bool Connection = (*m_write_message)["Connection"];
+
+  LOG_INFO("%s", "得到写锁和信息,准备写");
+
+  // 执行写操作（无锁）
   HTTP_CODE read_ret =
       static_cast<HTTP_CODE>((*m_write_message)["read_ret"].get<int>());
-
   m_response_content = (*m_write_message)["server_content"];
   bool write_ret = process_write(read_ret);
   if (!write_ret) {
@@ -642,19 +668,30 @@ bool http_conn::process_write_phase() {
   }
 
   bool write_result = write();
+  init_write();
 
+  // 仅获取是否需要设置事件的信息
+  bool more_data;
   m_lock.lock();
-  m_write_tasking = false;
-  if (!m_read_message_queue.empty()) {
-    init_write();
-    LOG_INFO("%s", "清除缓存继续写");
-    modfd(m_epollfd, m_sockfd, EPOLLOUT, m_TRIGMode);
-  } else if (!(*m_write_message)["Connection"]) {
-    LOG_INFO("%s", "断开持续连接");
-    m_lock.unlock();
+  m_write_tasking = false; // 重置写标志
+  more_data = !m_read_message_queue.empty();
+  m_lock.unlock();
+
+  if (!Connection && !more_data) {
+    LOG_INFO("%s", "断开连接");
+    close_conn();
     return false;
   }
-  m_lock.unlock();
+
+  epoll_event event;
+  if (more_data) {
+    event.events = event.events | EPOLLOUT;
+  }
+  if (Connection) {
+    event.events = event.events | EPOLLIN;
+  }
+
+  modfd(m_epollfd, m_sockfd, event.events, m_TRIGMode);
 
   return write_result;
 }

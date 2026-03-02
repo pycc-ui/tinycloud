@@ -386,17 +386,19 @@ void WebServer::eventLoop() {
       }
       // 处理客户连接上接收到的数据
       else if (events[i].events & EPOLLIN) {
+        LOG_INFO("%s", "收到读入请求");
         dealwithread(sockfd);
       }
       // 处理写信号
-      else if (events[i].events & EPOLLOUT) {
+      if (events[i].events & EPOLLOUT) {
+        LOG_INFO("%s", "收到写入请求");
         dealwithwrite(sockfd);
       }
     }
     if (timeout) {
       utils.timer_handler();
 
-      LOG_INFO("%s", "timer tick");
+      // LOG_INFO("%s", "timer tick");
 
       timeout = false;
     }

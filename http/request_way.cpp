@@ -214,7 +214,8 @@ void file_upload_way::request_stratege(MYSQL *mysql,
     std::string document_content = post_client["document_content"];
     // 目录存在时不会报错
 
-    std::ofstream output_file(actual_file_path, std::ios::app);
+    std::ofstream output_file(actual_file_path,
+                              std::ios::app | std::ios::binary);
     if (!output_file.is_open()) {
       response_json["status"] = "error";
       response_json["message"] = "file open failed";
@@ -235,10 +236,9 @@ void file_upload_way::request_stratege(MYSQL *mysql,
     std::string username = post_client["username"];
     std::string file_size = post_client["file_size"];
     std::string virtual_file_path = post_client["virtual_file_path"];
-    std::string document_content = post_client["document_content"];
-    std::string actual_file_path;
     std::string sha256_num = post_client["sha256_num"];
     std::string file_id;
+    std::string actual_file_path;
 
     std::stringstream select_file_table_sql;
     select_file_table_sql
