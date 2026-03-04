@@ -30,4 +30,7 @@ fast:
 clean:
 	rm -f server $(OBJS) $(DEPS)
 
-.PHONY: clean parallel fast
+fdb_clean:
+	@python3 ./test/clean_db.py
+	@rm -rf ./root/*
+.PHONY: clean parallel fast fdb_clean
