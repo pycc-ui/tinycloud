@@ -383,16 +383,15 @@ void WebServer::eventLoop() {
         bool flag = dealwithsignal(timeout, stop_server);
         if (false == flag)
           LOG_ERROR("%s", "dealclientdata failure");
-      }
-      // 处理客户连接上接收到的数据
-      else if (events[i].events & EPOLLIN) {
-        LOG_INFO("%s", "收到读入请求");
-        dealwithread(sockfd);
-      }
-      // 处理写信号
-      if (events[i].events & EPOLLOUT) {
-        LOG_INFO("%s", "收到写入请求");
-        dealwithwrite(sockfd);
+      } else {
+        if (events[i].events & EPOLLIN) {
+          LOG_INFO("%s", "收到读入请求");
+          dealwithread(sockfd);
+        }
+        if (events[i].events & EPOLLOUT) {
+          LOG_INFO("%s", "收到写入请求");
+          dealwithwrite(sockfd);
+        }
       }
     }
     if (timeout) {

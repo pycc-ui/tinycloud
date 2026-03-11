@@ -136,8 +136,8 @@ void file_download_way::request_stratege(MYSQL *mysql,
   if (downloading) {
     string actual_file_path = post_client["actual_file_path"];
     string username = post_client["username"];
-    int block_size = atoi(std::string(post_client["block_size"]).c_str());
-    int block_begin = atoi(std::string(post_client["block_begin"]).c_str());
+    int block_size = post_client["block_size"];
+    int block_begin = post_client["block_begin"];
     string document_content;
     std::ifstream input_file(actual_file_path, std::ios::binary);
     if (!input_file.is_open()) {
@@ -159,13 +159,14 @@ void file_download_way::request_stratege(MYSQL *mysql,
 
     return;
   } else {
+    int file_size = 0;
     std::string username = post_client["username"];
     std::string virtual_file_path = post_client["virtual_file_path"];
     string actual_file_path;
     std::stringstream select_file_table_sql;
 
-    select_file_table_sql
-        << "select actual_file_path from file_table where file_id = (";
+    select_file_table_sql << "select actual_file_path, file_size from "
+                             "file_table where file_id = (";
     select_file_table_sql << "select file_id from own_table where  username= '"
                           << username << "' and virtual_file_path = '"
                           << virtual_file_path << "');";
@@ -182,6 +183,7 @@ void file_download_way::request_stratege(MYSQL *mysql,
       if (result->row_count > 0) {
         MYSQL_ROW row = mysql_fetch_row(result);
         actual_file_path = row[0];
+        file_size = std::atoi(row[1]);
         mysql_free_result(result);
       } else {
         response_json["status"] = "error";
@@ -191,6 +193,7 @@ void file_download_way::request_stratege(MYSQL *mysql,
       }
       response_json["status"] = "success";
       response_json["message"] = "file download begin";
+      response_json["file_size"] = file_size;
       response_json["actual_file_path"] = actual_file_path;
       (*message_json)["server_content"] = response_json.dump(4);
       return;

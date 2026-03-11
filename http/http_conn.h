@@ -32,8 +32,8 @@ using json = nlohmann::json;
 
 class http_conn {
 public:
-  static const int READ_BUFFER_SIZE = 8192;
-  static const int WRITE_BUFFER_SIZE = 8192;
+  static const int READ_BUFFER_SIZE = 4096;
+  static const int WRITE_BUFFER_SIZE = 4096;
   enum METHOD {
     GET = 0,
     POST,

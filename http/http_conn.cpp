@@ -126,6 +126,7 @@ void http_conn::init(int sockfd, const sockaddr_in &addr, char *root,
   doc_root = root;
   m_TRIGMode = TRIGMode;
   m_close_log = close_log;
+  m_write_tasking = false;
 
   strcpy(sql_user, user.c_str());
   strcpy(sql_passwd, passwd.c_str());
@@ -158,7 +159,6 @@ void http_conn::init_read() {
 
 void http_conn::init_write() {
   m_response_content = "";
-  m_write_tasking = false;
   m_write_idx = 0;
   bytes_to_send = 0;
   bytes_have_send = 0;
@@ -446,8 +446,8 @@ http_conn::HTTP_CODE http_conn::do_request() {
 bool http_conn::write() {
   int temp = 0;
 
-  LOG_INFO("%s", m_write_buf);
-  LOG_INFO("%s", m_response_content.c_str());
+  LOG_INFO("%s%s", "写缓冲区", m_write_buf);
+  LOG_INFO("%s%s", "回复报文:", m_response_content.c_str());
   if (bytes_to_send == 0) {
     return true;
   }
@@ -581,6 +581,8 @@ bool http_conn::process_write(HTTP_CODE ret) {
 }
 
 void http_conn::process_read_phase() {
+
+  LOG_INFO("%s", "process_read_phase");
   bool read_fin;
   bool Connection;
   do {
@@ -606,7 +608,7 @@ void http_conn::process_read_phase() {
 
   if (Connection) {
     init_read();
-    LOG_INFO("%s", "通知继续读");
+    LOG_INFO("%s", "持久连接");
 
     // 最小临界区：仅获取需要的信息
     bool need_write;
@@ -615,15 +617,17 @@ void http_conn::process_read_phase() {
     m_lock.unlock();
 
     if (need_write) {
-      LOG_INFO("%s", "通知写");
       // 持久连接需要同时监听读写
+      LOG_INFO("%s", "持久连接,通知读写");
       modfd(m_epollfd, m_sockfd, EPOLLIN | EPOLLOUT, m_TRIGMode);
     } else {
       // 只监听读
+      LOG_INFO("%s", "持久连接,只通知读");
       modfd(m_epollfd, m_sockfd, EPOLLIN, m_TRIGMode);
     }
   } else {
     // 非持久连接：请求完成后只需写响应
+    LOG_INFO("%s", "非持久连接");
     bool need_write;
     m_lock.lock();
     need_write = !m_write_tasking && !m_read_message_queue.empty();
@@ -631,6 +635,7 @@ void http_conn::process_read_phase() {
 
     if (need_write) {
       // 只设置EPOLLOUT
+      LOG_INFO("%s", "非持久连接,继续写");
       modfd(m_epollfd, m_sockfd, EPOLLOUT, m_TRIGMode);
     }
     // 没有数据可写时，连接会在process_write_phase中关闭
@@ -638,10 +643,14 @@ void http_conn::process_read_phase() {
 }
 
 bool http_conn::process_write_phase() {
+
+  LOG_INFO("%s", "process_write_phase");
   // 快速失败检查
   m_lock.lock();
   if (m_write_tasking || m_read_message_queue.empty()) {
     m_lock.unlock();
+    LOG_INFO("%s", "未得到锁,先退出,同时通知读");
+    modfd(m_epollfd, m_sockfd, EPOLLIN, m_TRIGMode);
     return true;
   }
 
@@ -673,7 +682,7 @@ bool http_conn::process_write_phase() {
   // 仅获取是否需要设置事件的信息
   bool more_data;
   m_lock.lock();
-  m_write_tasking = false; // 重置写标志
+  m_write_tasking = false;
   more_data = !m_read_message_queue.empty();
   m_lock.unlock();
 
@@ -685,9 +694,11 @@ bool http_conn::process_write_phase() {
 
   epoll_event event;
   if (more_data) {
+    LOG_INFO("%s", "写完后通知继续写");
     event.events = event.events | EPOLLOUT;
   }
   if (Connection) {
+    LOG_INFO("%s", "写完后通知继续读");
     event.events = event.events | EPOLLIN;
   }
 

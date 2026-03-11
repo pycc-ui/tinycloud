@@ -16,7 +16,7 @@ DB_CONFIG = {
 }
 
 # 要清空的表列表
-TABLES = ["file_table", "own_table", "user_table"]
+TABLES = ["file_table", "own_table"]
 
 
 def truncate_tables(cursor, tables):
