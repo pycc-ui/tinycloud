@@ -6,6 +6,8 @@ main/main.o: main/main.cpp main/../config/config.h \
  main/../config/../webserver/../http/../CGImysql/../log/log.h \
  main/../config/../webserver/../http/../CGImysql/../log/block_queue.h \
  main/../config/../webserver/../http/../CGImysql/../log/../lock/locker.h \
+ main/../config/../webserver/../http/../http/JsonPool.h \
+ main/../config/../webserver/../http/../http/../nlohmann/json.hpp \
  main/../config/../webserver/../http/../lock/locker.h \
  main/../config/../webserver/../http/../log/log.h \
  main/../config/../webserver/../http/../nlohmann/json.hpp \
@@ -22,6 +24,8 @@ main/../config/../webserver/../http/../CGImysql/../lock/locker.h:
 main/../config/../webserver/../http/../CGImysql/../log/log.h:
 main/../config/../webserver/../http/../CGImysql/../log/block_queue.h:
 main/../config/../webserver/../http/../CGImysql/../log/../lock/locker.h:
+main/../config/../webserver/../http/../http/JsonPool.h:
+main/../config/../webserver/../http/../http/../nlohmann/json.hpp:
 main/../config/../webserver/../http/../lock/locker.h:
 main/../config/../webserver/../http/../log/log.h:
 main/../config/../webserver/../http/../nlohmann/json.hpp:

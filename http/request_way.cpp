@@ -46,7 +46,7 @@ std::string generateStoragePath(const std::string &file_id) {
 }
 
 void login_way::request_stratege(MYSQL *mysql,
-                                 std::unique_ptr<json> &message_json) {
+                                 JsonPool::PtrType &message_json) {
   std::string user;
   std::string password;
   string client_content = (*message_json)["client_content"];
@@ -69,7 +69,7 @@ void login_way::request_stratege(MYSQL *mysql,
 static auto_register<login_way> login_auto_register;
 
 void register_way::request_stratege(MYSQL *mysql,
-                                    std::unique_ptr<json> &message_json) {
+                                    JsonPool::PtrType &message_json) {
   std::regex pattern("^[a-zA-Z0-9]+$");
   std::string user;
   std::string password;
@@ -126,7 +126,7 @@ static auto_register<register_way> register_auto_register;
 // 文件操作相关策略实现
 
 void file_download_way::request_stratege(MYSQL *mysql,
-                                         std::unique_ptr<json> &message_json) {
+                                         JsonPool::PtrType &message_json) {
   string client_content = (*message_json)["client_content"];
   json post_client = json::parse(client_content);
   message_json->erase("client_content");
@@ -203,7 +203,7 @@ void file_download_way::request_stratege(MYSQL *mysql,
 static auto_register<file_download_way> file_download_auto_register;
 
 void file_upload_way::request_stratege(MYSQL *mysql,
-                                       std::unique_ptr<json> &message_json) {
+                                       JsonPool::PtrType &message_json) {
   // 文件上传逻辑
   string client_content = (*message_json)["client_content"];
   json post_client = json::parse(client_content);
@@ -394,7 +394,7 @@ void file_upload_way::request_stratege(MYSQL *mysql,
 static auto_register<file_upload_way> file_upload_auto_register;
 
 void file_delete_way::request_stratege(MYSQL *mysql,
-                                       std::unique_ptr<json> &message_json) {
+                                       JsonPool::PtrType &message_json) {
   string client_content = (*message_json)["client_content"];
   json post_client = json::parse(client_content);
   message_json->erase("client_content");
@@ -547,7 +547,7 @@ void file_delete_way::request_stratege(MYSQL *mysql,
 static auto_register<file_delete_way> file_delete_auto_register;
 
 void file_rename_way::request_stratege(MYSQL *mysql,
-                                       std::unique_ptr<json> &message_json) {
+                                       JsonPool::PtrType &message_json) {
   string client_content = (*message_json)["client_content"];
   json post_client = json::parse(client_content);
   message_json->erase("client_content");
@@ -606,11 +606,10 @@ void file_rename_way::request_stratege(MYSQL *mysql,
 
   (*message_json)["server_content"] = response_json.dump(4);
 }
-
 static auto_register<file_rename_way> file_rename_auto_register;
 
 void file_move_way::request_stratege(MYSQL *mysql,
-                                     std::unique_ptr<json> &message_json) {
+                                     JsonPool::PtrType &message_json) {
   string client_content = (*message_json)["client_content"];
   json post_client = json::parse(client_content);
   message_json->erase("client_content");
@@ -671,14 +670,14 @@ void file_move_way::request_stratege(MYSQL *mysql,
 static auto_register<file_move_way> file_move_auto_register;
 
 void file_copy_way::request_stratege(MYSQL *mysql,
-                                     std::unique_ptr<json> &message_json) {
+                                     JsonPool::PtrType &message_json) {
   // 暂时不需要写
 }
 static auto_register<file_copy_way> file_copy_auto_register;
 
 // 目录操作相关策略实现
-void directory_create_way::request_stratege(
-    MYSQL *mysql, std::unique_ptr<json> &message_json) {
+void directory_create_way::request_stratege(MYSQL *mysql,
+                                            JsonPool::PtrType &message_json) {
 
   string client_content = (*message_json)["client_content"];
   json post_client = json::parse(client_content);
@@ -739,8 +738,8 @@ void directory_create_way::request_stratege(
 }
 static auto_register<directory_create_way> directory_create_auto_register;
 
-void directory_delete_way::request_stratege(
-    MYSQL *mysql, std::unique_ptr<json> &message_json) {
+void directory_delete_way::request_stratege(MYSQL *mysql,
+                                            JsonPool::PtrType &message_json) {
 
   string client_content = (*message_json)["client_content"];
   json post_client = json::parse(client_content);
@@ -829,7 +828,7 @@ void directory_delete_way::request_stratege(
 static auto_register<directory_delete_way> directory_delete_auto_register;
 
 void directory_list_way::request_stratege(MYSQL *mysql,
-                                          std::unique_ptr<json> &message_json) {
+                                          JsonPool::PtrType &message_json) {
   string client_content = (*message_json)["client_content"];
   json post_client = json::parse(client_content);
   message_json->erase("client_content");
@@ -971,8 +970,8 @@ void directory_list_way::request_stratege(MYSQL *mysql,
 }
 static auto_register<directory_list_way> directory_list_auto_register;
 
-void directory_rename_way::request_stratege(
-    MYSQL *mysql, std::unique_ptr<json> &message_json) {
+void directory_rename_way::request_stratege(MYSQL *mysql,
+                                            JsonPool::PtrType &message_json) {
 
   string client_content = (*message_json)["client_content"];
   json post_client = json::parse(client_content);

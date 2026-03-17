@@ -2,6 +2,7 @@
 #define HTTPCONNECTION_H
 #include <arpa/inet.h>
 #include <assert.h>
+#include <clocale>
 #include <errno.h>
 #include <fcntl.h>
 #include <list>
@@ -23,6 +24,7 @@
 #include <unistd.h>
 
 #include "../CGImysql/sql_connection_pool.h"
+#include "../http/JsonPool.h"
 #include "../lock/locker.h"
 #include "../log/log.h"
 #include "../nlohmann/json.hpp"
@@ -32,8 +34,8 @@ using json = nlohmann::json;
 
 class http_conn {
 public:
-  static const int READ_BUFFER_SIZE = 4096;
-  static const int WRITE_BUFFER_SIZE = 4096;
+  static const int READ_BUFFER_SIZE = 8192;
+  static const int WRITE_BUFFER_SIZE = 8192;
   enum METHOD {
     GET = 0,
     POST,
@@ -91,7 +93,6 @@ private:
   HTTP_CODE process_read();
   bool process_write(HTTP_CODE ret);
 
-  void cleanup_parsed_buffer();
   HTTP_CODE parse_request_line(char *text);
   HTTP_CODE parse_headers(char *text);
   HTTP_CODE parse_content(char *text);
@@ -118,13 +119,8 @@ private:
   sockaddr_in m_address;
 
   char m_read_buf[READ_BUFFER_SIZE];
-
-  std::unique_ptr<json> m_read_message; // 报文信息存到json对象中
-  list<std::unique_ptr<json>> m_read_message_queue;
-
-  std::unique_ptr<json> m_write_message;
-  locker m_lock;
-  bool m_write_tasking;
+  JsonPool::PtrType m_read_message;
+  JsonPool::PtrType m_write_message;
 
   long m_read_idx;
   long m_checked_idx;

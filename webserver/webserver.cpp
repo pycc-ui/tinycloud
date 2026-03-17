@@ -1,4 +1,5 @@
 #include "webserver.h"
+#include "../http/JsonPool.h"
 
 WebServer::WebServer() {
   // http_conn类对象
@@ -29,7 +30,7 @@ WebServer::~WebServer() {
 void WebServer::init(int port, string user, string passWord,
                      string databaseName, int log_write, int opt_linger,
                      int trigmode, int sql_num, int thread_num, int close_log,
-                     int actor_model) {
+                     int actor_model, int jsonpool_num) {
   m_port = port;
   m_user = user;
   m_passWord = passWord;
@@ -41,6 +42,7 @@ void WebServer::init(int port, string user, string passWord,
   m_TRIGMode = trigmode;
   m_close_log = close_log;
   m_actormodel = actor_model;
+  JsonPool::instance().init(jsonpool_num);
 }
 
 void WebServer::trig_mode() {
@@ -185,18 +187,19 @@ void WebServer::adjust_timer(util_timer *timer) {
   timer->expire = cur + 3 * TIMESLOT;
   utils.m_timer_lst.adjust_timer(timer);
 
-  LOG_INFO("%s", "adjust timer once");
+  LOG_INFO("[%s:%d][%s][Thread:%lx]:%s", __FILE__, __LINE__, __func__,
+           (unsigned long)pthread_self(), "adjust timer once");
 }
 
 void WebServer::deal_timer(util_timer *timer, int sockfd) {
   // 注销套接字
+  LOG_INFO("[%s:%d][%s][Thread:%lx]:%s", __FILE__, __LINE__, __func__,
+           (unsigned long)pthread_self(), "close fd in deal_timer()");
   timer->cb_func(&users_timer[sockfd]);
   if (timer) {
     // 删除定时器
     utils.m_timer_lst.del_timer(timer);
   }
-
-  LOG_INFO("close fd %d", users_timer[sockfd].sockfd);
 }
 
 bool WebServer::dealclientdata() {
@@ -375,6 +378,10 @@ void WebServer::eventLoop() {
         // 1对方断开写端,2连接完全断开,3网络故障或尝试在一个已经关闭的连接上写
       } else if (events[i].events & (EPOLLRDHUP | EPOLLHUP | EPOLLERR)) {
         // 服务器端关闭连接，移除对应的定时器
+        LOG_INFO("[%s:%d][%s][Thread:%lx]:%s", __FILE__, __LINE__, __func__,
+                 (unsigned long)pthread_self(),
+                 "1对方断开写端,2连接完全断开,"
+                 "3网络故障或尝试在一个已经关闭的连接上写");
         util_timer *timer = users_timer[sockfd].timer;
         deal_timer(timer, sockfd);
       }
@@ -385,11 +392,13 @@ void WebServer::eventLoop() {
           LOG_ERROR("%s", "dealclientdata failure");
       } else {
         if (events[i].events & EPOLLIN) {
-          LOG_INFO("%s", "收到读入请求");
+          LOG_INFO("[%s:%d][%s][Thread:%lx]:%s", __FILE__, __LINE__, __func__,
+                   (unsigned long)pthread_self(), "收到读入请求");
           dealwithread(sockfd);
         }
         if (events[i].events & EPOLLOUT) {
-          LOG_INFO("%s", "收到写入请求");
+          LOG_INFO("[%s:%d][%s][Thread:%lx]:%s", __FILE__, __LINE__, __func__,
+                   (unsigned long)pthread_self(), "收到写入请求");
           dealwithwrite(sockfd);
         }
       }

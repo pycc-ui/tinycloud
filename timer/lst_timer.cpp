@@ -190,6 +190,7 @@ class Utils;
 void cb_func(client_data *user_data) {
   epoll_ctl(Utils::u_epollfd, EPOLL_CTL_DEL, user_data->sockfd, 0);
   assert(user_data);
+  printf("close fd %d in cb_func", user_data->sockfd);
   close(user_data->sockfd);
   http_conn::m_user_count--;
 }

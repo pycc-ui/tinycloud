@@ -9,6 +9,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <utility>
 
 // 定义http响应的一些状态信息
 const char *ok_200_title = "OK";
@@ -105,7 +106,8 @@ int http_conn::m_epollfd = -1;
 // 关闭连接，关闭一个连接，客户总量减一
 void http_conn::close_conn(bool real_close) {
   if (real_close && (m_sockfd != -1)) {
-    printf("close %d\n", m_sockfd);
+    LOG_INFO("[%s:%d][%s][Thread:%lx]:%s", __FILE__, __LINE__, __func__,
+             (unsigned long)pthread_self(), "close fd");
     removefd(m_epollfd, m_sockfd);
     m_sockfd = -1;
     m_user_count--;
@@ -126,7 +128,7 @@ void http_conn::init(int sockfd, const sockaddr_in &addr, char *root,
   doc_root = root;
   m_TRIGMode = TRIGMode;
   m_close_log = close_log;
-  m_write_tasking = false;
+  m_linger = false;
 
   strcpy(sql_user, user.c_str());
   strcpy(sql_passwd, passwd.c_str());
@@ -141,7 +143,6 @@ void http_conn::init(int sockfd, const sockaddr_in &addr, char *root,
 void http_conn::init_read() {
   mysql = NULL;
   m_check_state = CHECK_STATE_REQUESTLINE;
-  m_linger = false;
   m_method = GET;
   m_url = 0;
   m_version = 0;
@@ -171,6 +172,9 @@ void http_conn::init_write() {
 bool http_conn::read_once() {
 
   if (m_read_idx >= READ_BUFFER_SIZE) {
+    LOG_INFO("[%s:%d][%s][Thread:%lx]:%s", __FILE__, __LINE__, __func__,
+             (unsigned long)pthread_self(),
+             "从内核读取超过出缓冲区:m_read_idx >= READ_BUFFER_SIZE");
     return false;
   }
 
@@ -184,6 +188,9 @@ bool http_conn::read_once() {
     m_read_idx += bytes_read;
 
     if (bytes_read <= 0) {
+      LOG_INFO("[%s:%d][%s][Thread:%lx]:%s %s", __FILE__, __LINE__, __func__,
+               (unsigned long)pthread_self(), "recv返回有问题",
+               strerror(errno));
       return false;
     }
 
@@ -270,7 +277,8 @@ INTERNAL_ERROR
 http_conn::HTTP_CODE http_conn::parse_request_line(char *text) {
   // 查找\t或空格开头的指针
   // 请求行写入日志
-  LOG_INFO("%s", text);
+  LOG_INFO("[%s:%d][%s][Thread:%lx]:%s", __FILE__, __LINE__, __func__,
+           (unsigned long)pthread_self(), text);
   m_url = strpbrk(text, " \t");
   if (!m_url) {
     return BAD_REQUEST;
@@ -320,7 +328,8 @@ http_conn::HTTP_CODE http_conn::parse_request_line(char *text) {
 // 解析http请求的一个头部信息
 http_conn::HTTP_CODE http_conn::parse_headers(char *text) {
   // 头部写入日志
-  LOG_INFO("%s", text);
+  LOG_INFO("[%s:%d][%s][Thread:%lx]:%s", __FILE__, __LINE__, __func__,
+           (unsigned long)pthread_self(), text);
   if (text[0] == '\0') {
     if (m_content_length != 0) {
       // 检查请求体的长度如果不为0,将转入处理消息体
@@ -332,10 +341,8 @@ http_conn::HTTP_CODE http_conn::parse_headers(char *text) {
     text += 11;
     text += strspn(text, " \t");
     if (strcasecmp(text, "keep-alive") == 0) {
-      (*m_read_message)["Connection"] = true;
       m_linger = true;
     } else {
-      (*m_read_message)["Connection"] = false;
       m_linger = false;
     }
   } else if (strncasecmp(text, "Content-length:", 15) == 0) {
@@ -356,7 +363,8 @@ http_conn::HTTP_CODE http_conn::parse_headers(char *text) {
 // 判断http请求是否被完整读入
 http_conn::HTTP_CODE http_conn::parse_content(char *text) {
   //  请求体写入日志
-  LOG_INFO("%s", text);
+  LOG_INFO("[%s:%d][%s][Thread:%lx]:%s", __FILE__, __LINE__, __func__,
+           (unsigned long)pthread_self(), text);
   // 消息体前有一个/r/n被处理
   if (m_read_idx >= (m_content_length + m_checked_idx)) {
     text[m_content_length] = '\0';
@@ -368,28 +376,6 @@ http_conn::HTTP_CODE http_conn::parse_content(char *text) {
   return NO_REQUEST;
 }
 
-void http_conn::cleanup_parsed_buffer() {
-  if (m_checked_idx > 0) {
-    // 将未处理的数据移动到缓冲区开头
-    int remaining = m_read_idx - m_checked_idx;
-    if (remaining >= 0) {
-      memmove(m_read_buf, m_read_buf + m_checked_idx, remaining);
-      memset(m_read_buf + remaining, '\0', READ_BUFFER_SIZE - remaining);
-    }
-    if (strlen(m_read_buf) == 0) {
-      (*m_read_message)["read_fin"] = true;
-    } else {
-      (*m_read_message)["read_fin"] = false;
-    }
-    m_read_idx = remaining;
-    m_checked_idx = 0;
-    m_start_line = 0;
-
-    // 重置状态机，准备解析下一个请求
-    m_check_state = CHECK_STATE_REQUESTLINE;
-    m_content_length = 0;
-  }
-}
 http_conn::HTTP_CODE http_conn::process_read() {
   LINE_STATUS line_status = LINE_OK;
   HTTP_CODE ret = NO_REQUEST;
@@ -446,8 +432,12 @@ http_conn::HTTP_CODE http_conn::do_request() {
 bool http_conn::write() {
   int temp = 0;
 
-  LOG_INFO("%s%s", "写缓冲区", m_write_buf);
-  LOG_INFO("%s%s", "回复报文:", m_response_content.c_str());
+  LOG_INFO("[%s:%d][%s][Thread:%lx]:%s%s", __FILE__, __LINE__, __func__,
+           (unsigned long)pthread_self(), "写缓冲区:", m_write_buf);
+
+  LOG_INFO("[%s:%d][%s][Thread:%lx]:%s%s", __FILE__, __LINE__, __func__,
+           (unsigned long)pthread_self(),
+           "回复报文:", m_response_content.c_str());
   if (bytes_to_send == 0) {
     return true;
   }
@@ -462,6 +452,8 @@ bool http_conn::write() {
         return true;
       }
       m_response_content.clear();
+      LOG_INFO("[%s:%d][%s][Thread:%lx]:%s", __FILE__, __LINE__, __func__,
+               (unsigned long)pthread_self(), "写错误,writev为-1");
       return false;
     }
 
@@ -479,7 +471,8 @@ bool http_conn::write() {
 
     if (bytes_to_send <= 0) {
       m_response_content.clear();
-      LOG_INFO("%s", "写完毕");
+      LOG_INFO("[%s:%d][%s][Thread:%lx]:%s", __FILE__, __LINE__, __func__,
+               (unsigned long)pthread_self(), "写完毕");
       return true;
     }
   }
@@ -582,127 +575,47 @@ bool http_conn::process_write(HTTP_CODE ret) {
 
 void http_conn::process_read_phase() {
 
-  LOG_INFO("%s", "process_read_phase");
-  bool read_fin;
-  bool Connection;
-  do {
-    HTTP_CODE read_ret = process_read();
-    cleanup_parsed_buffer();
-    (*m_read_message)["read_ret"] = static_cast<int>(read_ret);
-    if (read_ret == NO_REQUEST) {
-      LOG_INFO("%s", "没有读完继续读");
-      modfd(m_epollfd, m_sockfd, EPOLLIN, m_TRIGMode);
-      return;
-    }
-    read_fin = (*m_read_message)["read_fin"];
-    Connection = (*m_read_message)["Connection"];
+  LOG_INFO("[%s:%d][%s][Thread:%lx]:%s", __FILE__, __LINE__, __func__,
+           (unsigned long)pthread_self(), "读开始");
 
-    m_lock.lock();
-    m_read_message_queue.push_back(std::move(m_read_message));
-    m_lock.unlock();
-
-    m_read_message = std::make_unique<json>();
-  } while (!read_fin);
-
-  LOG_INFO("\n%s", "读取完毕");
-
-  if (Connection) {
-    init_read();
-    LOG_INFO("%s", "持久连接");
-
-    // 最小临界区：仅获取需要的信息
-    bool need_write;
-    m_lock.lock();
-    need_write = !m_write_tasking && !m_read_message_queue.empty();
-    m_lock.unlock();
-
-    if (need_write) {
-      // 持久连接需要同时监听读写
-      LOG_INFO("%s", "持久连接,通知读写");
-      modfd(m_epollfd, m_sockfd, EPOLLIN | EPOLLOUT, m_TRIGMode);
-    } else {
-      // 只监听读
-      LOG_INFO("%s", "持久连接,只通知读");
-      modfd(m_epollfd, m_sockfd, EPOLLIN, m_TRIGMode);
-    }
-  } else {
-    // 非持久连接：请求完成后只需写响应
-    LOG_INFO("%s", "非持久连接");
-    bool need_write;
-    m_lock.lock();
-    need_write = !m_write_tasking && !m_read_message_queue.empty();
-    m_lock.unlock();
-
-    if (need_write) {
-      // 只设置EPOLLOUT
-      LOG_INFO("%s", "非持久连接,继续写");
-      modfd(m_epollfd, m_sockfd, EPOLLOUT, m_TRIGMode);
-    }
-    // 没有数据可写时，连接会在process_write_phase中关闭
+  HTTP_CODE read_ret = process_read();
+  if (read_ret == NO_REQUEST) {
+    LOG_INFO("[%s:%d][%s][Thread:%lx]:%s", __FILE__, __LINE__, __func__,
+             (unsigned long)pthread_self(), "没有读完继续读");
+    modfd(m_epollfd, m_sockfd, EPOLLIN, m_TRIGMode);
+    return;
   }
+  LOG_INFO("[%s:%d][%s][Thread:%lx]:%s", __FILE__, __LINE__, __func__,
+           (unsigned long)pthread_self(), "读完毕");
+  (*m_read_message)["read_ret"] = static_cast<int>(read_ret);
+
+  m_write_message = std::move(m_read_message);
+
+  init_write();
+  modfd(m_epollfd, m_sockfd, EPOLLOUT, m_TRIGMode);
 }
 
 bool http_conn::process_write_phase() {
 
-  LOG_INFO("%s", "process_write_phase");
-  // 快速失败检查
-  m_lock.lock();
-  if (m_write_tasking || m_read_message_queue.empty()) {
-    m_lock.unlock();
-    LOG_INFO("%s", "未得到锁,先退出,同时通知读");
-    modfd(m_epollfd, m_sockfd, EPOLLIN, m_TRIGMode);
-    return true;
-  }
+  LOG_INFO("[%s:%d][%s][Thread:%lx]:%s", __FILE__, __LINE__, __func__,
+           (unsigned long)pthread_self(), "写开始");
 
-  // 获取写任务
-  m_write_tasking = true;
-  m_write_message = std::move(m_read_message_queue.front());
-  m_read_message_queue.pop_front();
-
-  m_lock.unlock();
-
-  bool Connection = (*m_write_message)["Connection"];
-
-  LOG_INFO("%s", "得到写锁和信息,准备写");
-
-  // 执行写操作（无锁）
   HTTP_CODE read_ret =
       static_cast<HTTP_CODE>((*m_write_message)["read_ret"].get<int>());
   m_response_content = (*m_write_message)["server_content"];
+
   bool write_ret = process_write(read_ret);
+
   if (!write_ret) {
     write();
     close_conn();
     return false;
   }
-
   bool write_result = write();
-  init_write();
 
-  // 仅获取是否需要设置事件的信息
-  bool more_data;
-  m_lock.lock();
-  m_write_tasking = false;
-  more_data = !m_read_message_queue.empty();
-  m_lock.unlock();
-
-  if (!Connection && !more_data) {
-    LOG_INFO("%s", "断开连接");
-    close_conn();
-    return false;
+  if (m_linger) {
+    init_read();
+    modfd(m_epollfd, m_sockfd, EPOLLIN, m_TRIGMode);
   }
-
-  epoll_event event;
-  if (more_data) {
-    LOG_INFO("%s", "写完后通知继续写");
-    event.events = event.events | EPOLLOUT;
-  }
-  if (Connection) {
-    LOG_INFO("%s", "写完后通知继续读");
-    event.events = event.events | EPOLLIN;
-  }
-
-  modfd(m_epollfd, m_sockfd, event.events, m_TRIGMode);
-
   return write_result;
 }

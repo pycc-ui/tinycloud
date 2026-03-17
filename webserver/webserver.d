@@ -5,6 +5,8 @@ webserver/webserver.o: webserver/webserver.cpp webserver/webserver.h \
  webserver/../http/../CGImysql/../log/log.h \
  webserver/../http/../CGImysql/../log/block_queue.h \
  webserver/../http/../CGImysql/../log/../lock/locker.h \
+ webserver/../http/../http/JsonPool.h \
+ webserver/../http/../http/../nlohmann/json.hpp \
  webserver/../http/../lock/locker.h webserver/../http/../log/log.h \
  webserver/../http/../nlohmann/json.hpp \
  webserver/../http/../timer/lst_timer.h \
@@ -19,6 +21,8 @@ webserver/../http/../CGImysql/../lock/locker.h:
 webserver/../http/../CGImysql/../log/log.h:
 webserver/../http/../CGImysql/../log/block_queue.h:
 webserver/../http/../CGImysql/../log/../lock/locker.h:
+webserver/../http/../http/JsonPool.h:
+webserver/../http/../http/../nlohmann/json.hpp:
 webserver/../http/../lock/locker.h:
 webserver/../http/../log/log.h:
 webserver/../http/../nlohmann/json.hpp:

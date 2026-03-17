@@ -5,6 +5,8 @@ config/config.o: config/config.cpp config/config.h \
  config/../webserver/../http/../CGImysql/../log/log.h \
  config/../webserver/../http/../CGImysql/../log/block_queue.h \
  config/../webserver/../http/../CGImysql/../log/../lock/locker.h \
+ config/../webserver/../http/../http/JsonPool.h \
+ config/../webserver/../http/../http/../nlohmann/json.hpp \
  config/../webserver/../http/../lock/locker.h \
  config/../webserver/../http/../log/log.h \
  config/../webserver/../http/../nlohmann/json.hpp \
@@ -21,6 +23,8 @@ config/../webserver/../http/../CGImysql/../lock/locker.h:
 config/../webserver/../http/../CGImysql/../log/log.h:
 config/../webserver/../http/../CGImysql/../log/block_queue.h:
 config/../webserver/../http/../CGImysql/../log/../lock/locker.h:
+config/../webserver/../http/../http/JsonPool.h:
+config/../webserver/../http/../http/../nlohmann/json.hpp:
 config/../webserver/../http/../lock/locker.h:
 config/../webserver/../http/../log/log.h:
 config/../webserver/../http/../nlohmann/json.hpp:
