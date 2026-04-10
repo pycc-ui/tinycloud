@@ -37,7 +37,7 @@ def main():
         conn = mysql.connector.connect(**DB_CONFIG)
         cursor = conn.cursor()
         truncate_tables(cursor, TABLES)
-        conn.commit()  # TRUNCATE 是 DDL，会自动提交，但此处保留 commit 无妨
+        conn.commit()
         print("🎉 All tables truncated successfully.")
     except Error as e:
         print(f"❌ Database error: {e}")

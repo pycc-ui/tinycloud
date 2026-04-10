@@ -146,11 +146,13 @@ void file_download_way::request_stratege(MYSQL *mysql,
       (*message_json)["server_content"] = response_json.dump(4);
       return;
     }
+
     input_file.seekg(block_begin, ios_base::beg);
     document_content.resize(block_size);
     input_file.read(document_content.data(), block_size);
+    std::streamsize bytes_read = input_file.gcount();
+    document_content.resize(bytes_read);
     document_content = base64_encode(document_content);
-    input_file.close();
 
     response_json["status"] = "success";
     response_json["message"] = "file block downloading";
@@ -709,7 +711,7 @@ void directory_create_way::request_stratege(MYSQL *mysql,
 
   if (count > 0) {
     m_lock.unlock();
-    response_json["status"] = "error";
+    response_json["status"] = "exists";
     response_json["message"] = "directory already exists";
     (*message_json)["server_content"] = response_json.dump(4);
     return;
@@ -720,8 +722,7 @@ void directory_create_way::request_stratege(MYSQL *mysql,
   std::stringstream insert_dir_sql;
   insert_dir_sql
       << "INSERT INTO own_table(file_id, virtual_file_path, username, is_dir) "
-      << "VALUES('directory', '" << new_dir_path << "', '" << username
-      << "', 1);";
+      << "VALUES(NULL, '" << new_dir_path << "', '" << username << "', 1);";
 
   res = mysql_query(mysql, insert_dir_sql.str().c_str());
   m_lock.unlock();
@@ -1132,3 +1133,74 @@ void directory_rename_way::request_stratege(MYSQL *mysql,
   (*message_json)["server_content"] = response_json.dump(4);
 }
 static auto_register<directory_rename_way> directory_rename_auto_register;
+
+void change_password_way::request_stratege(MYSQL *mysql,
+                                           JsonPool::PtrType &message_json) {
+  std::string client_content = (*message_json)["client_content"];
+  json post_client = json::parse(client_content);
+  message_json->erase("client_content");
+  json response_json;
+
+  std::string username = post_client["username"];
+  std::string old_password = post_client["old_password"];
+  std::string new_password = post_client["new_password"];
+
+  // 1. 验证新密码合法性（与注册规则一致）
+  std::regex pattern("^[a-zA-Z0-9]+$");
+  if (new_password.size() <= 1 || new_password.size() > 40 ||
+      !std::regex_match(new_password, pattern)) {
+    response_json["status"] = "error";
+    response_json["message"] = "new password must be 2-40 characters long and "
+                               "contain only letters and numbers";
+    (*message_json)["server_content"] = response_json.dump(4);
+    return;
+  }
+
+  // 2. 验证旧密码是否正确（从内存中的 users map 检查）
+  m_lock.lock();
+  auto it = users.find(username);
+  bool user_exists = (it != users.end());
+  bool old_password_correct = user_exists && (it->second == old_password);
+  m_lock.unlock();
+
+  if (!user_exists) {
+    response_json["status"] = "error";
+    response_json["message"] = "user not found";
+    (*message_json)["server_content"] = response_json.dump(4);
+    return;
+  }
+
+  if (!old_password_correct) {
+    response_json["status"] = "error";
+    response_json["message"] = "old password incorrect";
+    (*message_json)["server_content"] = response_json.dump(4);
+    return;
+  }
+
+  // 3. 更新数据库中的密码
+  std::stringstream update_sql;
+  update_sql << "UPDATE user_table SET passwd = '" << new_password
+             << "' WHERE username = '" << username << "';";
+
+  // 加锁执行数据库更新和内存更新，保持一致性
+  m_lock.lock();
+  int res = mysql_query(mysql, update_sql.str().c_str());
+  if (!res) {
+    // 数据库更新成功，同步更新内存中的 users map
+    users[username] = new_password;
+  }
+  m_lock.unlock();
+
+  if (res) {
+    response_json["status"] = "error";
+    response_json["message"] = "database update failed";
+  } else {
+    response_json["status"] = "success";
+    response_json["message"] = "password changed successfully";
+  }
+
+  (*message_json)["server_content"] = response_json.dump(4);
+}
+
+// 自动注册
+static auto_register<change_password_way> change_password_auto_register;

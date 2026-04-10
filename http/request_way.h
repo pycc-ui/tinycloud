@@ -182,5 +182,12 @@ public:
 
   std::string get_name() override { return "/directory/rename"; }
 };
+// 修改密码策略
+class change_password_way : public request_way {
+public:
+  change_password_way() = default;
+  void request_stratege(MYSQL *mysql, JsonPool::PtrType &message_json) override;
 
+  std::string get_name() override { return "/auth/change_password"; }
+};
 #endif // !REQUEST_WAY_H

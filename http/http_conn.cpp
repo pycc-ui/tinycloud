@@ -369,7 +369,6 @@ http_conn::HTTP_CODE http_conn::parse_content(char *text) {
   if (m_read_idx >= (m_content_length + m_checked_idx)) {
     text[m_content_length] = '\0';
     m_string = text;
-    m_checked_idx = m_checked_idx + m_content_length + 1;
     (*m_read_message)["client_content"] = string(m_string);
     return GET_REQUEST;
   }
@@ -616,6 +615,8 @@ bool http_conn::process_write_phase() {
   if (m_linger) {
     init_read();
     modfd(m_epollfd, m_sockfd, EPOLLIN, m_TRIGMode);
+  } else {
+    return false;
   }
   return write_result;
 }

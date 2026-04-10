@@ -1,0 +1,130 @@
+#include "process_http.h"
+#include <QDebug>
+#include <QEventLoop>
+#include <QFile>
+#include <QNetworkRequest>
+#include <QTcpSocket>
+#include <QUrl>
+#include "information.h"
+
+Process_http::Process_http(QObject *parent) : QObject(parent) {
+
+
+  this->ip = QString::fromStdString(information::getInstance().get_ip());
+  this->port = std::stoi(information::getInstance().get_port());
+
+    socket.connectToHost(this->ip, this->port);
+  if (socket.waitForConnected(1000)) {
+      //qDebug() << "✅ TCP连接成功!";
+  }else{
+      qDebug() << "❌ TCP连接失败:" << socket.errorString();
+  }
+}
+Process_http::~Process_http() { socket.close(); }
+
+bool Process_http::http_send(QString httpMethods, QString path,QString connection,
+                             const json &send_json) {
+
+
+  QString send_body = QString::fromStdString(send_json.dump(4));
+
+    // 发送HTTP/1.0请求
+    // host字段指的是服务端的ip和端口号
+    QString httpRequest = QString("%1 %2 HTTP/1.1\r\n"
+                                  "Host: %3:%4\r\n"
+                                  "Content-Length: %5\r\n"
+                                  "Connection: %6\r\n"
+                                  "\r\n"
+                                  "%7 ")
+                              .arg(httpMethods, path, ip, QString::number(port),
+                                   QString::number(send_body.toUtf8().size()),connection,
+                                   send_body); // 结尾留一个空给服务端使用
+
+    socket.write(httpRequest.toUtf8());
+    //qDebug()<<"发送报文";
+    socket.waitForBytesWritten(); 
+    return true;
+}
+
+bool Process_http::http_rev(json &rev_json) {
+    QByteArray response; // 用于累积接收的数据
+
+    // 1. 读取头部，直到找到 "\r\n\r\n"
+    while (!response.contains("\r\n\r\n")) {
+        if (!socket.waitForReadyRead(3000)) {
+            qDebug() << "等待头部超时";
+            return false;
+        }
+        response += socket.readAll();
+        // 防止对方关闭连接导致无限等待
+        if (socket.bytesAvailable() == 0 && !socket.isOpen()) break;
+    }
+
+    // 2. 定位头部结束位置
+    int headerEnd = response.indexOf("\r\n\r\n");
+    if (headerEnd == -1) {
+        qDebug() << "未找到头部结束标记";
+        return false;
+    }
+
+    QByteArray headerData = response.left(headerEnd);
+    QByteArray bodyData = response.mid(headerEnd + 4); // 已有部分正文
+
+    // 3. 解析头部（沿用你原有的分割逻辑，但使用 QByteArray 避免编码问题）
+    QList<QByteArray> lines = headerData.split('\n');
+    if (lines.isEmpty()) return false;
+
+    // 第一行状态行
+    QByteArray statusLine = lines[0].trimmed();
+    QList<QByteArray> statusParts = statusLine.split(' ');
+    if (statusParts.size() < 2) return false;
+    rev_json["statusCode"] = statusParts[1].toInt();
+
+    // 解析其他头部，并提取 Content-Length
+    int contentLength = -1;
+    for (int i = 1; i < lines.size(); ++i) {
+        QByteArray line = lines[i].trimmed();
+        if (line.isEmpty()) continue;
+        int colonIndex = line.indexOf(':');
+        if (colonIndex != -1) {
+            QByteArray key = line.left(colonIndex).trimmed();
+            QByteArray value = line.mid(colonIndex + 1).trimmed();
+            rev_json[key.toStdString()] = value.toStdString(); // 存储头部到 JSON（可选）
+            if (key.toLower() == "content-length") {
+                contentLength = value.toInt();
+            }
+        }
+    }
+
+    // 4. 根据 Content-Length 继续读取正文
+    if (contentLength >= 0) {
+        while (bodyData.size() < contentLength) {
+            if (!socket.waitForReadyRead(1000)) {
+                qDebug() << "等待正文超时";
+                return false;
+            }
+            bodyData += socket.readAll();
+        }
+    } else {
+        // 如果没有 Content-Length，可能是分块编码或连接关闭结束
+        // 此处简化处理：一直读到对方关闭连接（不推荐，但可作为后备）
+        while (socket.waitForReadyRead(1000)) {
+            bodyData += socket.readAll();
+        }
+        // 注意：这种简单方法可能因超时退出，不一定能读全
+    }
+
+    // 5. 解析正文 JSON（直接使用 bodyData，避免 QString 转换）
+    try {
+        rev_json["body"] = json::parse(bodyData.toStdString());
+    } catch (const json::parse_error &e) {
+        qDebug() << "JSON 解析失败:" << e.what();
+        qDebug() << "收到的正文长度:" << bodyData.size();
+        // 可选：打印部分正文辅助调试
+        qDebug() << "正文前200字节:" << bodyData.left(200);
+        return false;
+    }
+
+    //qDebug() << "✅ 成功接收完整响应，总长度:" << response.size() + (bodyData.size() - (response.size() - headerEnd - 4));
+    return true;
+}

@@ -1,0 +1,21 @@
+<RCC>
+    <qresource prefix="/">
+        <file>img/minus.svg</file>
+        <file>img/user.svg</file>
+        <file>img/close.svg</file>
+        <file>img/copy-document.svg</file>
+        <file>img/full-screen.svg</file>
+        <file>img/file.svg</file>
+        <file>img/file-in.svg</file>
+        <file>img/friend.svg</file>
+        <file>img/friend-in.svg</file>
+        <file>img/message.svg</file>
+        <file>img/message-in.svg</file>
+        <file>img/setting.svg</file>
+        <file>img/setting-in.svg</file>
+        <file>img/user-in.svg</file>
+        <file>img/oExit-fullscreen.svg</file>
+        <file>img/dircon.svg</file>
+        <file>img/filecon.svg</file>
+    </qresource>
+</RCC>
