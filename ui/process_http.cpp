@@ -35,10 +35,10 @@ bool Process_http::http_send(QString httpMethods, QString path,QString connectio
                                   "Content-Length: %5\r\n"
                                   "Connection: %6\r\n"
                                   "\r\n"
-                                  "%7 ")
+                                  "%7")
                               .arg(httpMethods, path, ip, QString::number(port),
                                    QString::number(send_body.toUtf8().size()),connection,
-                                   send_body); // 结尾留一个空给服务端使用
+                                   send_body);
 
     socket.write(httpRequest.toUtf8());
     //qDebug()<<"发送报文";
@@ -121,7 +121,9 @@ bool Process_http::http_rev(json &rev_json) {
         qDebug() << "JSON 解析失败:" << e.what();
         qDebug() << "收到的正文长度:" << bodyData.size();
         // 可选：打印部分正文辅助调试
+        qDebug() << "头部" << headerData;
         qDebug() << "正文前200字节:" << bodyData.left(200);
+        qDebug() << "正文后500字节:" << bodyData.right(500);
         return false;
     }
 

@@ -91,7 +91,7 @@ void WebServer::sql_pool() {
   // 初始化数据库连接池
   m_connPool = connection_pool::GetInstance();
   // 由本地连接本地的数据库
-  m_connPool->init("localhost", m_user, m_passWord, m_databaseName, 3306,
+  m_connPool->init("172.17.0.1", m_user, m_passWord, m_databaseName, 3306,
                    m_sql_num, m_close_log);
 
   // 初始化数据库读取表

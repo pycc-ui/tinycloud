@@ -1,0 +1,51 @@
+version: "3.8"
+
+services:
+  # Nginx 负载均衡
+  nginx:
+    image: nginx
+    container_name: nginx-lb
+    ports:
+      - "9006:9006"
+    volumes:
+      - ./test.conf:/etc/nginx/conf.d/default.conf
+    networks:
+      - mynet
+    restart: always
+
+  # 后端服务 A
+  server-a:
+    image: ${BACKEND_IMAGE} # <--- 变量
+    container_name: server-a
+    volumes:
+      - ./root:/app/root
+      - ./loga:/app/serverlog
+    networks:
+      - mynet
+    restart: always
+
+  # 后端服务 B
+  server-b:
+    image: ${BACKEND_IMAGE} # <--- 变量
+    container_name: server-b
+    volumes:
+      - ./root:/app/root
+      - ./logb:/app/serverlog
+    networks:
+      - mynet
+    restart: always
+
+  # 后端服务 C
+  server-c:
+    image: ${BACKEND_IMAGE} # <--- 变量
+    container_name: server-c
+    volumes:
+      - ./root:/app/root
+      - ./logc:/app/serverlog
+    networks:
+      - mynet
+    restart: always
+
+networks:
+  mynet:
+    driver: bridge

@@ -128,7 +128,7 @@ void http_conn::init(int sockfd, const sockaddr_in &addr, char *root,
   doc_root = root;
   m_TRIGMode = TRIGMode;
   m_close_log = close_log;
-  m_linger = false;
+  m_linger = true;
 
   strcpy(sql_user, user.c_str());
   strcpy(sql_passwd, passwd.c_str());
@@ -360,11 +360,25 @@ http_conn::HTTP_CODE http_conn::parse_headers(char *text) {
   return NO_REQUEST;
 }
 
-// 判断http请求是否被完整读入
 http_conn::HTTP_CODE http_conn::parse_content(char *text) {
-  //  请求体写入日志
+  // 请求体写入日志（只打印前100和后100字节）
+  std::string content(text);
+  std::string log_content;
+  if (content.length() > 200) {
+    log_content = content.substr(0, 100) + "... [中间省略 " +
+                  std::to_string(content.length() - 200) + " 字节] ..." +
+                  content.substr(content.length() - 100);
+  } else {
+    log_content = content;
+  }
   LOG_INFO("[%s:%d][%s][Thread:%lx]:%s", __FILE__, __LINE__, __func__,
-           (unsigned long)pthread_self(), text);
+           (unsigned long)pthread_self(), log_content.c_str());
+
+  LOG_INFO("[%s:%d] m_read_idx=%d, m_content_length=%d, m_checked_idx=%d, "
+           "total_needed=%d",
+           __FILE__, __LINE__, m_read_idx, m_content_length, m_checked_idx,
+           m_content_length + m_checked_idx);
+
   // 消息体前有一个/r/n被处理
   if (m_read_idx >= (m_content_length + m_checked_idx)) {
     text[m_content_length] = '\0';
@@ -408,7 +422,7 @@ http_conn::HTTP_CODE http_conn::process_read() {
       ret = parse_content(text);
       if (ret == GET_REQUEST)
         return do_request();
-      line_status = LINE_OPEN;
+      return NO_REQUEST;
       break;
     }
     default:
@@ -425,6 +439,8 @@ http_conn::HTTP_CODE http_conn::do_request() {
 
   way_manager solve_request(m_close_log);
   solve_request.do_way(mysql, m_read_message);
+  LOG_INFO("[%s:%d][%s][Thread:%lx]:%s", __FILE__, __LINE__, __func__,
+           (unsigned long)pthread_self(), "处理好了报文");
   return FILE_REQUEST;
 }
 
@@ -448,6 +464,8 @@ bool http_conn::write() {
       if (errno == EAGAIN) {
         // 资源不可用,意思是稍后试试
         modfd(m_epollfd, m_sockfd, EPOLLOUT, m_TRIGMode);
+        LOG_INFO("[%s:%d][%s][Thread:%lx]:%s", __FILE__, __LINE__, __func__,
+                 (unsigned long)pthread_self(), "资源不可用");
         return true;
       }
       m_response_content.clear();
@@ -608,14 +626,20 @@ bool http_conn::process_write_phase() {
   if (!write_ret) {
     write();
     close_conn();
+    LOG_INFO("[%s:%d][%s][Thread:%lx]:%s", __FILE__, __LINE__, __func__,
+             (unsigned long)pthread_self(), "write_ret指示断开连接");
     return false;
   }
   bool write_result = write();
 
+  LOG_INFO("[%s:%d][%s][Thread:%lx]:%s", __FILE__, __LINE__, __func__,
+           (unsigned long)pthread_self(), "write退出");
   if (m_linger) {
     init_read();
     modfd(m_epollfd, m_sockfd, EPOLLIN, m_TRIGMode);
   } else {
+    LOG_INFO("[%s:%d][%s][Thread:%lx]:%s", __FILE__, __LINE__, __func__,
+             (unsigned long)pthread_self(), "断开连接");
     return false;
   }
   return write_result;

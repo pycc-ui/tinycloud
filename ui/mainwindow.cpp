@@ -413,6 +413,7 @@ void MainWindow::on_uploadButton_clicked() {
   content["actual_file_path"] = rev["body"]["actual_file_path"];
   content.erase("file_size");
   content.erase("sha256_num");
+  int count = 0;
   while (file) {
     // 准备缓冲区
     char buffer[CHUNK_SIZE];
@@ -444,7 +445,6 @@ void MainWindow::on_uploadButton_clicked() {
     } else if (rev["body"]["status"] == "success") {
       // 还有后续块，使用 keep-alive
       temp = "keep-alive";
-
     } else {
       qDebug() << "有错误,最后的报文是:";
       qDebug() << rev["body"].dump(4);
@@ -454,14 +454,12 @@ void MainWindow::on_uploadButton_clicked() {
       qDebug() << "发送失败";
       break;
     }
-
     if (!upload.http_rev(rev)) {
       qDebug() << "有问题,最后的报文是:";
       qDebug() << rev["body"].dump(4);
       qDebug() << "接收响应失败，终止上传";
       break;
     }
-
     if (temp == "close") {
       break;
     }
